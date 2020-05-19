@@ -1,0 +1,202 @@
+\chapter{Demonstrations}
+
+% \section{Minor results}
+% \label{sec:appendixResults}
+
+% \begin{proposition}
+%   \label{prop:covpositive}
+%   The covariance matrix $\bcovmatrix_j$ is positive-definite. 
+% \end{proposition}
+% \begin{proof}
+%   For now, just believe...
+% \end{proof}
+
+
+\section{The cyclic restriction}
+\label{sec:alpha_restriction}
+
+With replicates being days it is reasonable to suppose a cyclic feature on the separated mean curves. That is $\alpha_c(t_1) = \alpha_c(t_N), \forall c$. Exploiting the basis expansion in \myeqref{eq:alphaexpansion} we have
+
+\begin{eqnarray}
+  \tc_c(t_1) = \tc_c(t_N)
+  &\iff &\tc_c(t_1) - \tc_c(t_N) =0 \nonumber \\
+  & & \bphi(t_1) \bbeta_c - \bphi(t_N) \bbeta_c  = 0 \nonumber \\
+  & &\big(\bphi(t_1) - \bphi(t_N) \big) \bbeta_c = 0, \qquad \forall c.
+  \label{eq:ap1}
+\end{eqnarray}
+
+\noindent Name $\Delta = \bphi(t_1) - \bphi(t_N)$ and let $\mathbf{R}$ be the restriction matrix written as
+
+\begin{equation}
+  \label{eq:ap2}
+  \mathbf{R}
+  =
+  \begin{pmatrix}
+    \Delta & \cdots & \Delta & \mathbf{0}_{1 \times P}
+  \end{pmatrix}_{1 \times (CK+P)}.
+\end{equation}
+
+\noindent Take the vector $\bbeta$ from the model with covariates and write \myeqref{eq:ap1} as
+
+\begin{equation}
+  \label{eq:ap3}
+  \mathbf{R} \bbeta = \sum_{c=1}^C \big(\bphi(t_1) - \bphi(t_N) \big) \bbeta_c = 0.
+\end{equation}
+
+Now we are able to build the estimation procedure with restriction using only \myeqref{eq:ap3} in the Lagrange multipler approach. 
+
+To illustrate the aggregated model estimation, suppose we want to minimize the following expression with respect to $\bbeta$ with known $\mathbf{W}$:
+
+\begin{equation}
+  \underset{\bbeta}{arg}\, min
+  -\frac{1}{2}
+  \bigl(
+  \mathbf{X} \boldsymbol \beta
+  -
+  \mathbf{y}
+  \bigr)^\transp
+  \mathbf{W}
+    \bigl(
+  \mathbf{X} \boldsymbol \beta
+  -
+  \mathbf{y}
+  \bigr),
+\end{equation}
+
+\noindent subject to
+
+\begin{equation}
+\mathbf{R}\bbeta = 0
+\end{equation}
+
+
+\noindent with $\mathbf{X} \in \mathbb{R}^{T \times K}$, $\mathbf{X}(t) \in \mathbb{R}^{1 \times K}$, $\boldsymbol \beta \in \mathbb{R}^{K \times 1}$ and $\mathbf{W} \in \mathbb{R}^{T \times T}$. 
+
+Then, using Lagrange Multipliers, we write the equation $\ell$ to be maximized as
+
+\begin{equation}
+  \label{eq:ap:lagr}
+  \ell
+  =
+    -\frac{1}{2}
+  \bigl(
+  \mathbf{X} \boldsymbol \beta
+  -
+  \mathbf{y}
+  \bigr)^\transp
+  \mathbf{W}
+    \bigl(
+  \mathbf{X} \boldsymbol \beta
+  -
+  \mathbf{y}
+  \bigr)
+  -
+  \lambda
+  \mathbf{R}\bbeta.
+\end{equation}
+
+Derive \myeqref{eq:ap:lagr} with respect to $\bbeta$ and $\lambda$ we have
+
+\begin{align}
+  \frac{\partial}{\partial \bbeta} \ell
+  &=
+    -\frac{1}{2}
+    \Bigl[
+    2 \mathbf{X}^\transp \mathbf{W} \mathbf{X} \bbeta
+    -
+    2 \mathbf{X}^\transp \mathbf{W} \by
+    \Bigr]
+    -
+    \lambda
+    \mathbf{R}^\transp, \label{eq:partialbeta} \\[.3cm]
+  \frac{\partial}{\partial \lambda} \ell
+  &=
+    \mathbf{R} \bbeta. \label{eq:partiallambda}
+\end{align}
+
+In \myeqref{eq:partialbeta}, take $\frac{\partial}{\partial \bbeta} \ell = 0$ and solve it for $\bbeta$ to obtain
+
+\begin{equation}
+  \label{eq:betasol1}
+  \bbeta
+  =
+  \Bigl(
+  \mathbf{X}^\transp
+  \mathbf{W}
+  \mathbf{X}
+  \Bigr)^{-1}
+  \Bigl(
+  \mathbf{X}^\transp
+  \mathbf{W}
+  \by
+  -
+  \lambda
+  \mathbf{R}^\transp
+  \Bigr)
+\end{equation}
+
+\noindent Substitute \myeqref{eq:betasol1} in \myeqref{eq:partiallambda}:
+
+\begin{align}
+  \frac{\partial}{\partial \lambda} \ell
+  &=
+    \mathbf{R}
+    \Biggl[
+    \Bigl(
+    \mathbf{X}^\transp
+    \mathbf{W}
+    \mathbf{X}
+    \Bigr)^{-1}
+    \Bigl(
+    \mathbf{X}^\transp
+    \mathbf{W}
+    \by
+    -
+    \lambda
+    \mathbf{R}^\transp
+    \Bigr)
+    \Biggr] \nonumber \\
+  &=
+    \mathbf{R}
+    \Bigl(
+    \mathbf{X}^\transp
+    \mathbf{W}
+    \mathbf{X}
+    \Bigr)^{-1}
+    \mathbf{X}^\transp
+    \mathbf{W}
+    \by
+    -
+    \lambda
+    \mathbf{R}
+    \mathbf{R}^\transp.
+      \label{eq:lambdapresol}
+\end{align}
+
+Similarly, in \myeqref{eq:lambdapresol} take $  \frac{\partial}{\partial \lambda} \ell = 0$ and solve it for $\lambda$ to obtain
+
+\begin{equation}
+  \label{eq:lambdasol}
+  \lambda
+  =
+  \frac
+  {    \mathbf{R}
+    \bigl(
+    \mathbf{X}^\transp
+    \mathbf{W}
+    \mathbf{X}
+    \bigr)^{-1}
+    \mathbf{X}^\transp
+    \mathbf{W}
+    \by}
+  { \mathbf{R}\mathbf{R}^\transp}.
+\end{equation}
+
+Substitute $\lambda$ from \myeqref{eq:lambdasol} in \myeqref{eq:betasol1} and get an estimator for $\bbeta$ with cyclic restriction.
+
+
+
+
+
+
+

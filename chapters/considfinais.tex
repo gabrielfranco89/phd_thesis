@@ -1,0 +1,41 @@
+\chapter{Final considerations}
+
+% model provides separated curves with covariance structure (splines são legais e etc)
+The proposed aggregated model proved an excellent tool to separate blind source and cluster source units in simulated and real data. We provided valuable additions to the aggregated model available in literature such as explanatory variables, surface modeling and nested covariance structures. The basis function expansion and Gaussian process supposition bring the model to a family of functional models with favorable mathematical properties and well established inference methodology. 
+
+% Robustness for wrong cov
+In simulated data, the model confirmed its robustness to wrong covariance structure mispecifications. The separated mean curves had great performance even with few replications and under and oversimplification of covariance structure. 
+
+% full model is nice
+The full aggregated model with explanatory variables and additional functional component demonstrated  sophistication and flexibility in real and simulated data. Suggestions on how to properly use the additional component were provided to avoid poor decisions with few information. Anyhow, confidence intervals for mean curves and surfaces will indicate ranges of uncertainty.
+
+% cluster is nice  also
+Clustering analysis had 100\% of assignment accuracy in simulated data and an interesting station grouping in load profile data. The least squares estimation and supposition of Gaussian process made possible to build an advantageous framework to obtain initial cluster values via multiple simple linear model trials. The introduction of proper initial values reduces drastically the model computational time.
+
+% cluster with 3, 4 and 5 did not converge
+In the load profile data, analysis with 3, 4 and 5 cluster did not converge to global maxima and consequently could not be evaluated. However, the proposed methodology gives the user full control of the total number of available clusters.
+
+% if you want cluster and full model, give your jumps
+A limitation to the clustering analysis is the lack of explanatory variables and additional component of the full model approach. Still, the user may utilize both methods by manually separating data using the clustering analysis and fit a full aggregated model to each splitted data. 
+
+
+% future works
+
+\section{Future works}
+\label{sec:future}
+
+% Two submitted papers
+(Espero que até a entrega da tese já tenham sido aceitos)
+Two papers are result of this theses and will be submitted to first rank statistical journals. One paper will present the full aggregated model together with the clustering analysis and other will release the R package \texttt{aggrmodel}, already available in alpha version in GitHub: https://github.com/gabrielfranco89/aggrmodel
+
+% Aluisio's idea
+The model have several opportunities for future works. Professor Aluísio Pinheiro proposed a latent variable $Z_{jc}$ indexed both by groups and subject types. This approach will assign to a typical curve of subject $c$ in station $j$ a probability to belong a cluster. With a properly written likelihood, the model might keep its base estimation routine and gain even more flexibility to further analysis on separated signals.
+
+% Appliances
+Load monitoring of electrical appliances have a recent growth in academic journals. The aggregated model must might be an interesting tool to be evaluated in referential data sets such as the ECO Data used in recent works to evaluate energy disaggregation models~\cite{beckel2014eco}. Some adjustments might be necessary to fit the proposed aggregated model but also an opportunity to compare with several statistical approaches~\cite{schirmer2019evaluation,schirmer2019integration,schirmer2020energy}. 
+
+% Relationship with bss
+Relationship between the aggregated model and blind source separation can be explored as well. Both have the same goal in separating aggregated signal and could have an interesting mathematical relationship to be researched and potentially published. Inserting the aggregated model in a crescent area as blind source separation may put the method in a higher rank and attract several researches worldwide.
+
+% IC e orientações
+The opportunities mentioned above are perfectly suited for all multiple levels of research. Directly application in ECO Data might be an interesting work for scientific initiation in partnership with a masters student to adapt the model to the appliances data. The new latent variable $Z_{jc}$ and the formal relationship with blind source separation might attractive PhD projects.

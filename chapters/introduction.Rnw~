@@ -1,0 +1,149 @@
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+echo=FALSE,  warning=FALSE,  message=FALSE,  cache=TRUE,  fig.height=4,  fig.width=6,  out.width='.8\\linewidth'
+)
+@
+
+
+\chapter{Introduction}
+\label{chap:intro}
+
+
+% proposal
+This thesis presents a complete model to separate functional aggregated load profile data of electrical energy stations in typical curves for each type of supplied customer. Besides the blind source separation, the model provides estimates for covariance structure and accommodate explanatory variables and an additional response functional component as well.
+
+% BSS relation
+Load monitoring has been studied using several machine learning and regression methods \cite{schirmer2019evaluation}. The approach to separate the aggregated load is related to Blind Source Separation, where a single channel source is separated into multiple channels using a portion of restrictions and conditions~\cite{cardoso1998blind}. The proposed model uses the number of customers supplied by each electrical energy station to estimate their mean curves.
+
+%How? bf expansion, gaussian process, latent var modeling
+Making use of basis function expansion in a context of gaussian process regression, the estimated mean curves offers flexibility and favorable inference properties such as consistency and unbiasedness. The estimated covariance structure provides information on load measurements relationship along time and also a model to explain load variability. Finally, a latent variable is introduced to group electrical stations by their shared typical curves.
+
+% 
+The following section will present the motivation using an example of load monitoring data. In sequence, a brief introduction to the model methodology for familiarization and a literature review concluding the introductory chapter.
+
+\section{Motivation}
+\label{sec:motivation}
+
+<<readGavin>>=
+## Read Gavin Data
+library(forcats)
+load("../R/data/gavin2cons.RData")
+subsub <- unique(subNames$rename)[1:4]
+library(ggplot2)
+library(dplyr)
+p_intro = df %>%
+    filter(Substation %in% subsub) %>%
+    mutate(Substation = fct_recode(Substation,
+                                   "Station A" = "Substation A",
+                                   "Station B" = "Substation B",
+                                   "Station C" = "Substation C",
+                                   "Station D" = "Substation D"
+                                   )) %>%
+  ggplot(aes(x=Time,y=Load,group=Date)) +
+  geom_line(aes(col=Date),alpha=.6) +
+  facet_wrap(.~Substation)
+@
+
+
+Suppose an energy station supplying the electrical demand of customers in a region. Customers are labeled in two categories: unrestricted (C1) and ``Economy 7'' (C2) domestic customers, with the later a program with cheaper electric tariffs during the off-peak period.% gets a bonus for using electricity during a certain period and probably have a different consumption pattern than the standard ones.
+
+Suppose we do not have access to residences electrical load, but the aggregated consumption in the energy station is available. Furthermore, the number of unrestricted and ``Economy 7'' residences is also known. The first question to rise in this scenario is the following: ``is it possible to estimate the mean consumption curve for each one of the two types of customers, based on the aggregated information given by the energy substation and their number of customers?'' The answer is yes, but it is essential to observe more stations with different number customers to create the variability required to separate the aggregated consumption curve. 
+
+In Figure~\ref{fig:gavin1} there is an example of the aggregated load profile in four substations at United Kingdom% from the dataset used in this thesis.
+The curves represent 60 working days from January 7th to March 29th at 2013. Different shapes and scales are observed because stations A to D have distinct customer distribution. This  distribution is called \textit{market} and showed in Table~\ref{tab:gavin1}.
+
+\begin{figure}
+    <<fig_intro,fig=TRUE,fig.width=6,fig.height=4,fig.align='center' >>=
+        <<readGavin>>
+        p_intro + ylab("Electrical load") + xlab("Time in hours")
+    @
+    \caption{An example of 60 observed electrical loads on four substations.}
+    \label{fig:gavin1}
+\end{figure}
+
+Unrestricted residences are labeled as C1 and ``Economy 7'' customers are named C2. The divergent peak at station D is probably due to a majority of type C2 customers and evidences the possibly different typical curves for each customer.
+
+Additionally, suppose there are more information in data which can be useful to explain the variability of the electrical load profile. For example, notice in substations A and B that darker curves are placed mainly in the upper side of the curve set, indicating a potential effect of temperature, since the dark tones of blue represent the winter period. Furthermore, the data set contains plenty of information which can be helpful and will be incorporated in the proposed model, such as station geographic location.
+
+
+\begin{table}[b]
+    \caption[table]{Market distribution of four stations presented in Figure~\ref{fig:gavin1}.}
+    \centering
+    <<>>=
+        <<readGavin>>
+        tab <- tidyr::spread(mkt,Type,Num)
+        colnames(tab) = c("Substation", "C1 (Standard)", "C2 (Economy 7)")
+        knitr::kable(tab[1:4,],format="latex",booktabs=T)
+    @
+    \label{tab:gavin1}
+\end{table}
+
+With data from many stations another question arises: ``are the mean consumption curves the same for every substation?'' For example, is it expected that an unrestricted domestic residence in an urban area such as London have the same load profile as a house located in the countryside? The answer is probably no and the motivation to introduce a latent variable to cluster stations based on their separated typical curves.
+
+The following section will show an introduction of how the aggregated data model perform the signal separation in order to estimate the mean curves for each type of customer.
+
+\section{Model overview}
+\label{sec:overview}
+
+Suppose the aggregated load on substation $j$ at day $i$ is a Gaussian Process $Y_{ij}(t) \sim \mathcal{GP}\bigl(\mu_j(t),\, \Sigma_j(s,t)\bigr)$. We suppose that each customer $c$ have a typical curve of consumption $W_c(t)$ which allow us to comprehend the aggregated load as the sum
+
+\begin{equation}
+    Y_{ij}(t) = \sum_{c=1}^C m_{jc} W_c(t) + \varepsilon_{ij},
+\end{equation}
+
+\noindent with $m_{jc}$ as the number of customers of type $c$ in station $j$ and $\varepsilon_{ij}$ the Gaussian error associated to the aggregated load. The known quantity of customers in each station is called \textit{market}.
+
+The current aggregated model available in literature expands the typical curve $W_c(t)$ using basis functions, such as B-Splines, Fourier basis, Wavelets or polynomial basis \cite{dias2009non,dias2013hierarchical,dias2015aggregated}. In addition, the proposed aggregated model in this thesis supposes that there are more information in data which could be useful to explain the aggregated signal $Y_{ij}(t)$. For example, the temperature effect mentioned in Section~\ref{sec:motivation} can be incorporated as a functional component in the customer typical curve and expanded as a tensor product of basis functions. On the other hand, non functional variables as station characteristics can be used as explanatory variables.
+
+% Falar da covariância
+The aggregated model also provides a flexible covariance structure with few correlation and dispersion parameters to improve computing time by decreasing the cost of inverting high dimensional matrices \cite{liu2018gaussian}. The structures varies from the the most simple uniform and homogeneous cases to the most flexible  variance functional modeling case \cite{dias2013hierarchical}.
+
+Furthermore, suppose a latent variable $Z_j$ indicating that the station $j$ belongs to a cluster $b$, from known $B$ possibilities. We propose a model-based framework to estimate station clusters using the EM algorithm approach.
+
+Since the aggregated load is a linear model in a Gaussian Process, we can estimate basis functions expansion parameters via least squares and the independent covariance parameters by numerical optimization of the likelihood.
+
+\section{Literature review}\label{sec:literature}
+
+
+\subsection{Energy context in Brazil and UK}
+\label{sec:energy}
+
+In 2017 mostly of Brazilian energy matrix consists of hydroelectric generation, with 65.2\%, followed by thermoelectric with 17.1\% \cite{epe2018}. Most of these hydrographic basins are located in South, Southeast and Northeast, where the greatest metropolitan areas are located. A solar smart grid in Brazilian Semiarid Northeast is suggested as an strategy to explore the sun's radiant energy and provide an alternative for economic inclusion for the region \cite{nobre2019solar}. 
+
+It is possible to notice the distribution network shortage in North region \cite{nobre2019solar}. Smaller urban areas, undersized industry complexes and consequently lower electrical energy demand, makes it reasonable to locate most of the energy matrix in South and Southeast. However, the electric energy consumption demand will grow exponentially in 2030 and a national plan to rationalize may be implemented \cite{PNE2030}. 
+
+This scenario of energy shortage stimulates the efficient use of resources and for that it is important to comprehend how users are consuming, even in regions like North where there are probably fewer support to study each type of customer and their characteristics. Solutions as the proposed aggregated model allow the researcher to investigate the mean consumption of different types of customers and the possibility to split the analysis with the model-based clustering option in order to optimize the electricity network planning and operation.
+
+In United Kingdom, the government committed to reduce greenhouse gas emissions to at least 80\% in no later than 2050, in comparison to 1990. Such commitment requires new approaches for network planning and great understanding of customer consumption. There are contributions to achieve this huge challenge, such as frameworks to classifying stations according to their load profiles and peak load estimation of low voltage networks \cite{li2015development1,li2015development2}. However, their analysis are based only on the aggregated load at stations not considering the separated curve for each type of customer. These authors also provided the data set used in this thesis. Again, the proposed method arises as an alternative to cluster stations but in a model-based approach estimating the separated customer's mean curves.
+
+%Segundo \cite{PNE2030}, existem programas de eficiência energética para suprir a demanda crescente de eletricidade. O modelo pode ajudar a entender o consumo de determinados tipos de consumidores e na tomada de decisão sobre qual a melhor maneira de se aumentar a eficiência de consumo desses indivíduos. 
+%% Ver pag. 200 do PNE2030
+
+\subsection{Aggregated data model}
+\label{sec:aggrIntro}
+
+The first proposed model of this family of aggregated data model used B-Splines expansion to estimate the load profile of customers supplied by transformer in the city of Campinas~\cite{dias2009non}. The model used the market information to compose the linear model and estimated the covariance structure using the sample covariance matrix.
+
+More sophisticated covariance structures were proposed to model Near Infrared Spectroscopy data to evaluate meat quality based on the separated wave length according to quality specifications \cite{dias2013hierarchical,dias2015aggregated}.
+
+Considering the market as a random variable, the aggregated model was also used to identify fraud in electric energy customer classification~\cite{lenzi2017analysis}.
+
+Several widely used machine learning and regression methods were used to study energy disaggregation such as artificial neural networks~\cite{lin2015advanced,hosseini2017non}, random forests~\cite{bilski2017generalized,schirmer2019integration}, Support Vector Machines~\cite{basu2014nonintrusive,schirmer2020energy}, Hidden Markov models~\cite{de2014switching}, wavelet component analysis~\cite{zhu2014load} and K-Nearest-Neighbors~\cite{kim2014electrical}. A review and comparison of multiple statistical methods for energy disaggregation task is available in literature~\cite{schirmer2019evaluation}.
+
+In summary, the aggregated model is a Gaussian process with mean parameter expanded by basis functions and structured covariance matrix. Supposing a clustering latent variable, the aggregated model can be written as a mixture of Gaussian processes \cite{shi2005hierarchical,shi2011gaussian,tresp2001mixtures}. In a non-parametric approach it is possible to switch between functions in a regression model \cite{de2014switching,de2017switching}. The proposed model is a novel model-based clustering of aggregated functional data that group stations according to their customer's typical curves similarity.
+
+%Mais tarde, \cite{dias2013hierarchical} propõem também um modelo funcional agregado, desta vez utilizando uma abordagem bayesiana de estimação e uma estrutura de covariância funcional que permite modelar também a relação entre diferentes instantes de uma mesma função.
+
+%Em sequência, \cite{dias2015aggregated} baseam-se na interpretação funcional da fórmula de Beer-Lambert para calibrar e predizer no contexto de dados de espectroscopia quasi-infravermelho. Em uma das aplicações, observa-se a curva resultante do 
+
+%Em seguida, \cite{lenzi2017analysis}  permite que o modelo possa detectar possíveis fraudes de identidade de consumidor, quando um consumidor reporta um tipo que ele não é. Para isso, as autoras consideram o mercado como um fator aleatório e <ver>
+
+%Paralelamente, \cite{de2014switching} e \cite{de2017switching} \mylipsum{1}.
+
+
+\section{Thesis overview}
+\label{sec:overview}
+
+This thesis is organized in the following chapters: Chapter 2 describes the methodology by introducing the simple aggregated model, expanding to the full model by incorporating the explanatory variables and additional functional component and finally the latent variable modeling. Chapter 3 is a compilation of three simulation studies: a mispecified covariance structure experiment to evaluate model robustness, the full model experiment evaluation and the clustering analysis experiment. Chapter 4 presents an application to real load profile data of stations in United Kingdom. 

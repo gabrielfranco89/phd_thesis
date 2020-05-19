@@ -1,0 +1,217 @@
+\documentclass[
+	oldfontcommands,
+	sumario=abnt-6027-2012,
+	12pt,	
+	openright,
+	oneside,
+	a4paper,
+        table,
+	%brazil,
+	english
+	]{imecc-unicamp}
+
+        
+% PACOTES ESSENCIAIS
+        \input{src/pacotes}
+        \input{src/abbr.tex}
+
+        % SWEAVE STUFF
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+echo=FALSE,warning=FALSE,message=FALSE
+)
+@
+
+
+% INFORMAÇÕES E DADOS PARA CAPA E FOLHA DE ROSTO
+\input{src/dados}
+
+
+% CONFIGURAÇÕES GERAIS
+\input{src/configglobal}
+
+
+% COMPILA O ÍNDICE (OPCIONAL)
+\makeindex
+
+
+% CONTÉM TODAS AS ENTRADAS DO GLOSSÁRIO (OPCIONAL)
+%\input{src/glossario}
+
+\begin{document}
+\selectlanguage{english}
+
+% Retira espaço extra obsoleto entre as frases.
+\frenchspacing
+
+%%%%%%%%%%% INÍCIO DOS ELEMENTOS PRÉ-TEXTUAIS %%%%%%%%%%%%
+\pretextual
+
+
+% PRIMEIRA FOLHA (OBRIGATÓRIO)
+\imprimirprimeirafolha
+
+% FOLHA DE ROSTO (OBRIGATÓRIO)
+
+% Após realizar as correções finais de seu trabalho acadêmico, escaneie a folha de rosto devidamente assinada pelo orientador e salve no formato PDF com o nome 'folha-de-rosto.pdf' no diretório do seu projeto. Daí substitua a linha do comando '\imprimirfolhaderosto' pelas 3 linhas de comando abaixo:
+
+% \begin{folhaderosto}
+%     \includepdf{folha-de-rosto.pdf}
+% \end{folhaderosto}
+
+\imprimirfolhaderosto
+
+
+% FICHA CATALOGRÁFICA (OBRIGATÓRIO)
+
+\begin{fichacatalografica}
+    \begin{center}
+	{\ABNTEXchapterfont\large A ficha catalográfica será fornecida pela biblioteca}
+    \end{center}
+%     \includepdf{ficha-catalografica.pdf}
+\end{fichacatalografica}
+
+
+% FOLHA DE APROVAÇÃO (OBRIGATÓRIO)
+% A folha de aprovação será fornecida pela secretaria de pós-graduação. Após recebê-la, escaneie a folha salvando em PDF no diretório do seu projeto com o nome 'folhadeaprovacao.pdf' e deixe apenas o comando '\includepdf{folhadeaprovacao.pdf}' dentro do ambiente abaixo
+\begin{folhadeaprovacao}
+    \centering{\ABNTEXchapterfont\large A folha de aprovação será fornecida pela Secretaria de Pós-Graduação}
+%     \includepdf{folhadeaprovacao.pdf}
+\end{folhadeaprovacao}
+
+
+% DEDICATÓRIA (OPCIONAL)
+\begin{dedicatoria}
+   \vspace*{\fill}
+   \centering
+   \noindent
+   \textit{
+       Aos meus pais, os que tornaram possível meu sonho de ser cientista
+   }
+   \vspace*{\fill}
+\end{dedicatoria}
+
+% AGRADECIMENTOS (OPCIONAL)
+\begin{agradecimentos}
+  \input{chapters/thanks}
+\end{agradecimentos}
+
+% % EPÍGRAFE (OPCIONAL)
+% \begin{epigrafe}
+%     \vspace*{\fill}
+%     \begin{flushright}
+% 	\textit{``Não vos amoldeis às estruturas deste mundo, \\
+% 	    mas transformai-vos pela renovação da mente, \\
+% 	    a fim de distinguir qual é a vontade de Deus: \\
+% 	    o que é bom, o que Lhe é agradável, o que é perfeito.\\
+% 	    (Bíblia Sagrada, Romanos 12, 2)
+% 	}
+%     \end{flushright}
+% \end{epigrafe}
+
+
+% RESUMOS (OBRIGATÓRIO)
+\input{chapters/resumos}
+
+
+% % LISTA DE ILUSTRAÇÕES (OPCIONAL)
+% \pdfbookmark[0]{\listfigurename}{lof}
+% \listoffigures*
+% \cleardoublepage
+
+
+% LISTA DE TABELAS (OPCIONAL)
+% \pdfbookmark[0]{\listtablename}{lot}
+% \listoftables*
+% \cleardoublepage
+
+
+% LISTA DE SÍMBOLOS (OPCIONAL)
+\begin{simbolos}
+  
+  % \begin{table}
+  % \centering
+  %   \caption{List of mathematical symbols and the link with the electrical load problem in parenthesis.}
+  % \begin{tabular}{lcl}
+  %   \toprule
+%    Object & Representation & Domain \\
+\item[$i$] Replicates (date) %& $i$ & $1, 2, \dots, I$ \\
+\item[$j$]  Groups (substations) % & $j$  &$1, 2, \dots, J$ \\
+\item[$c$]   Subject type %&$c$  &$1, 2, \dots, C$ \\
+\item[$m$] Subject (customer)% & $m$ & $1,2,\dots,\mjc$ \\
+\item[$t$] Time    % Time & t & Real interval $[0,T]$ \\
+\item[$b$] Cluster %&$b$ &$1,2,\dots, B$ \\
+\item[$\mj{\cdot}$]    Total number of subjects at group $j$ %& $\mj{\cdot}$ & $\mathbb{Z}$ Non negatives \\
+\item[$\mjc$] Number of subjects of type $c$ at group $j$% & $\mjc$ & $1,2,\dots, \mj{\cdot}$ \\
+\item[$\alpha_c(t)$]    Mean signal (Typical curve) %& $\alpha_c(t)$ & $\mathbb{R}$ Non negatives \\
+\item[$W_{ijmc}(t)$] Separated signal (individual consumption) %& $W_{ijmc}(t)$ & $\mathbb{R}$ Non negatives \\
+\item[$Y_{ij}(t)$] Aggregated signal (aggregated consumption)% & $Y_{ij}(t)$ & $\mathbb{R}$ Non negatives\\
+    % % \bottomrule
+ %  \end{tabular}
+%   \label{tab:letters}
+% \end{table}
+
+\end{simbolos}
+
+% SUMÁRIO (OBRIGATÓRIO)
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents*
+\cleardoublepage
+
+%%%%%%%%%%%%%%%%% INÍCIO DOS ELEMENTOS TEXTUAIS %%%%%%%%%%%%%%%
+\textual
+\input{chapters/knited/introduction}
+\input{chapters/knited/methods}
+\input{chapters/knited/simu}
+\input{chapters/knited/results}
+%\Sexpr{knit_child('chapters/introduction.Rnw')}
+%\Sexpr{knit_child('chapters/methods.Rnw')}
+
+% CONSIDERAÇÕES FINAIS
+% Finaliza a parte no bookmark do PDF para que se inicie o
+% bookmark na raiz e adiciona espaço de parte no Sumário
+\phantompart
+\input{chapters/considfinais}
+%%%%%%%%%%%%%%%%% FIM DOS ELEMENTOS TEXTUAIS %%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%% INÍCIO DOS ELEMENTOS PÓS-TEXTUAIS %%%%%%%%%%%
+\postextual
+
+% REFERÊNCIAS
+\bibliography{src/refs}
+
+
+% GLOSSÁRIO
+\phantompart
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{\glossaryname}
+\printglossaries
+
+
+% APÊNDICES
+\begin{apendicesenv}
+% Imprime uma página indicando o início dos apêndices
+\partapendices
+\input{chapters/apendices}
+\end{apendicesenv}
+
+
+% ANEXOS
+% \begin{anexosenv}
+% % Imprime uma página indicando o início dos anexos
+% \partanexos
+% \input{chapters/anexos}
+% \end{anexosenv}
+
+
+% INDICE REMISSIVO
+\phantompart
+\printindex
+
+
+%%%%%%%%%%%%%%%%% FIM DOS ELEMENTOS TEXTUAIS %%%%%%%%%%%%%%%%%
+
+\end{document}

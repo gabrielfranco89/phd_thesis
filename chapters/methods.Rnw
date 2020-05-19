@@ -1,0 +1,990 @@
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+echo=FALSE,warning=FALSE,message=FALSE,cache=TRUE
+)
+@
+
+\chapter{Methods}
+\label{chap:methods}
+
+This section describes the mathematical methods to fit the aggregated data model. Well established concepts such as B-Splines expansion and Gaussian Process are better detailed in essential references in literature~\cite{shi2011gaussian,ramsay2005functional}.
+
+Section~\ref{sec:aggrmodel} introduces the simplest aggregated model and builds the main features to achieve the full model with explanatory variables, surface response and covariance structure.
+In sequence, the proposed clustering analysis is presented in Section~\ref{sec:clustering} followed by the estimation procedures in Section~\ref{sec:estimation}. The chapter will finish with model diagnosis in Section~\ref{sec:modelcheck}
+
+
+\section{The aggregated model} \label{sec:aggrmodel}
+
+Let $\Wijmct$ be the signal of subject $m$ of type $c$ at time $t$ from group $j$ and replicate $i$. Suppose it can be represented as
+
+\begin{equation}
+  \Wijmct = \tc_c(t) + \erroijmct,
+  \label{eq:wmodel}
+\end{equation}
+
+\noindent with type $c$ mean signal $\tc_c(\cdot)$ and $\erroijmct$ a Gaussian Process (GP) with zero mean and covariance structure $\wcovmatrix_c(\cdot,\cdot)$ to be detailed in Section~\ref{sec:covstructures}.
+
+Let $\Yijt$ be the aggregated signal from group $j$ and replicate $i$. We represent $\Yijt$ as the sum
+%Seja ${Y}_{ij}(t)$ a curva agregada de consumidores no dia $i$ e na subestação $j$ representada pela seguinte soma:
+
+\begin{align}
+  \label{eq:yij}
+  \Yijt
+  =&
+      \sum_{c=1}^C
+      \sum_{m=1}^{\mjc}
+      \Wijmct \\ \nonumber
+  =&
+      \sum_{c=1}^C
+      \sum_{m=1}^{\mjc}
+      \alpha_c(t)
+      +
+      \erroijmct \\ \nonumber
+  =&
+      \sum_{c=1}^C
+      \mjc
+       \tc_c(t)
+      +
+      \erroijt,
+\end{align}
+
+\noindent with $\erroijdd \sim GP \bigl( 0, \covmatrix_j(\cdot,\cdot)\bigr)$.
+%\noindent com $\varepsilon_{ij}(t) \sim Normal\Bigl({0},  \Sigma_j(t) \Bigr)$.
+
+Considering independence between replicates and groups, the covariance structure is written as
+%Considerando que há independência entre as replicações e as subestações, sua estrutura de covariância é dada por 
+
+\begin{equation}
+  \label{eq:sigma}
+   \covmatrix_j(s,t) = \sum_{c=1}^C \mjc \wcovmatrix_c(s,t).
+\end{equation}
+
+
+\subsection{Signal basis function expansion}
+
+The \myeqref{eq:wmodel} have a mean signal component $\tc_c(\cdot)$ characteristic of subjects of type $c$ followed by an Gaussian error. To model the mean signal we use a basis function expansion
+
+\begin{equation}
+  \tc_c(t) = \mysum{k}{K} \basisfunc_k(t) \beta_{ck} = \bphi(t) \bbeta_c,
+  \label{eq:alphaexpansion}
+\end{equation}
+
+\noindent with $\bbeta_c \in \mathbb{R}^K$ vector of expansion parameters and $\basisfunc_k(\cdot)$ the $k$-th basis function which can be chosen according to user preference, such as B-Splines, Fourier, wavelets and polynomial basis. In this thesis we use B-Splines because its flexibility and easy implementation. 
+
+The number of basis functions $K$ must be known. Ideally, $K$ is a value that captures the signal details but far from interpolation. However, it is possible to obtain a consistent estimate of the optimal number of basis functions by minimizing a penalized proxy of the Kullback–Leibler distance \cite{dias2007consistent}.
+
+\subsection{Full model: additional functional component and covariates}
+\label{sec:method-fm}
+
+Suppose there are two variables $u(t)$ and $v(t)$ functions of time $t$ which explains the mean signal $\tc_c(\cdot)$. In the electrical energy consumption example, suppose the mean signal is function of time $u(t) =t$ and temperature $v(t)$. It is reasonable to assume because different appliances are used at opposite stations, such as air conditioners and warm systems. Therefore, supposing both functional components $u(t)$ and $v(t)$ we expand $\tc_c(\cdot)$ as a tensor product of basis functions:
+
+\begin{align}
+  \tc_c(t) = 
+  \tc_c \bigl( u(t), v(t) \bigr)
+  =&
+      \mysum{k}{K} \mysum{l}{L}
+      \basisfunc_k \bigl( u(t)\bigr)
+      \basisfunc^\prime_l \bigl( v(t)\bigr)
+      \,
+      \beta_{lkc}, \label{eq:surf}\\
+  =&
+    \:  \vecbasisfunc(t) \bbeta_c \label{eq:surfvec}  
+\end{align}
+
+\noindent where $\basisfunc(\cdot)$ and $\basisfunc^\prime(\cdot)$ are basis functions and $\beta_{lkc}$ the parameters of expansion. \myeqref{eq:surfvec} shows the vectorized form of sum in \myeqref{eq:surf}.
+
+Additionally, suppose there are $P$ known explanatory variables relative to groups, namely $\covar_1, \dots, \covar_P$. Consider the mean signal $\tc_c(\cdot)$ with two functional components and attach the explanatory variables to the aggregated model $\Yijt$:
+
+\begin{eqnarray}
+  \label{eq:surfmodel}
+  \Yijt &=&
+          \tc_c \bigl( u(t), v(t) \bigr) +
+          \covar_{j1} \covarpar_1 +
+          \dots +
+          \covar_{jP} \covarpar_P +
+          \erroijt \\[.5cm]
+        &=&
+          \Biggl(\,
+          \mysum{c}{C}\mysum{k}{K} \mysum{l}{L}
+          \basisfunc_k \bigl( u(t)\bigr)
+          \basisfunc^\prime_l \bigl( v(t)\bigr)
+          \,
+          \beta_{lkc}
+          \, \Biggr)
+          +
+          \bcovar_j \veccovarpar
+          +
+            \erroijt, \nonumber \\[.5cm]
+        &=&
+            \mysum{c}{C}
+            \vecbasisfunc(t) \bbeta_c
+            +
+            \bcovar_j \veccovarpar
+            +
+            \erroijt, \nonumber
+\end{eqnarray}
+
+\noindent with $\veccovarpar \in \mathbb{R}^P$ parameters of group explanatory variables.
+
+\subsection{Covariance structures} \label{sec:covstructures}
+
+Let $\erroijmc(\cdot)$ be a Gaussian Process with zero mean and covariance functional $\wcovmatrix_c(\cdot,\cdot)$, as in \myeqref{eq:wmodel}. Define the covariance structure $\wcovmatrix_c(\cdot,\cdot)$ as
+
+\begin{eqnarray}
+  \label{eq:covstructure}
+  \wcovmatrix_c(s,t)
+  &=&
+      \text{Cov} \Bigl(
+      \erroijmc(s),
+      \erroijmct
+      \Bigr) \nonumber \\[.5cm]
+  &=&
+      \varfunc_c(s) \,
+      \corfunc_c(s,t) \,
+      \varfunc_c(t),
+\end{eqnarray}
+
+\noindent where $\varfunc_c(\cdot)$ and $\corfunc_c(\cdot)$ are variance and correlation functionals, respectively. The different parametrizations of both functionals are described in the following sections.
+
+\subsubsection{Variance functionals}
+\label{sec:varfunc}
+
+The variance functional $\varfunc_c(\cdot)$ describes the variability of subject type $c$ at a certain instant. As with the mean curves, it can be expanded by $K^\prime$ basis functions:
+
+\begin{equation}
+  \label{eq:completefunc}
+  \varfunc_c(\cdot)
+  =
+  \mysum{k}{K^\prime}
+  \basisfunc^\varfunc_k(\cdot)
+  \beta_k^\star,
+\end{equation}
+
+\noindent with $\basisfunc^\varfunc_k(\cdot)$ pre-defined basis functions and $\beta_k^\varfunc$ expansion parameters. However, the uniqueness solution for \myeqref{eq:covstructure} is only guaranteed if $\eta_c(\cdot)$ is positive. Otherwise, any value multiplied by -1 is also an optimal solution. So we restrict the expansion coefficients $\beta_k^\star$ to be positive for all $k$.
+
+\myeqref{eq:completefunc} can be parameterized to build nested functionals \cite{dias2013hierarchical}. If
+
+\begin{eqnarray}
+  \label{eq:nest}
+  \sigma_c &= \frac{1}{K^\prime} \sum_{k=1}^{K^\prime} \beta_k^\star \\
+  \beta_k^{\varfunc} &= \beta_l^\star - \sigma_c,
+\end{eqnarray}
+
+\noindent then %\myeqref{eq:completefunc} becomes
+
+\begin{equation}
+  \label{eq:completefunc2}
+  \varfunc_c(\cdot)
+  =
+  \sigma_c
+  +
+  \mysum{k}{K^\prime}
+  \basisfunc^\varfunc_k(\cdot)
+  \beta_k^\varfunc,
+\end{equation}
+
+\noindent with $\sum_{k=1}^{K^\prime} \beta_k^\varfunc = 0$. 
+
+Now if $\beta_k^\varfunc = 0, \forall k$, then we have an homogeneous variance $\sigma_c$ along the functional domain. This homogeneity can be uniform for all subjects types, resulting in $\sigma_c = \sigma, \forall c$.  Thus we define three forms of nested variability 
+
+
+%Variance functionals define the variability at instant $t$. There are three forms to construct the functional $\varfunc(\cdot)$:
+
+\begin{itemize}
+\item
+  Homogeneous uniform: $\varfunc_c(t) = \sigma, \: \forall c$;
+\item
+  Homogeneous: $\varfunc_c(t) = \sigma_c$;
+\item
+%  Complete: $\varfunc_c(t) = \sigma_c \bigl( \completefunc_c(t) \bigr)^{\varfuncpar_c}$;
+  Complete: $  \varfunc_c(\cdot)
+  =
+  \sigma_c
+  +
+  \mysum{k}{K^\prime}
+  \basisfunc^\varfunc_k(\cdot)
+  \beta_k^\varfunc,$
+\end{itemize}
+
+% \noindent where $\completefunc_c(\cdot)$ is a functional which 
+
+%where $\sigma \in \mathbb{R}$ and $\delta \in \mathbb{R}^+$ are parameters of variance. The later is explicit only in complete case and and fixed as zero otherwise. We expand the functional parameter $\completefunc_c(\cdot)$ by $K^\prime$ basis functions in order to have a fixed number of parameters to estimate and benefit from their flexibility. So, write $\completefunc_c(\cdot)$ as
+
+
+
+
+
+
+\subsubsection{Correlation functionals}
+\label{sec:corfunc}
+
+Correlation functionals quantify the relation between two instants $s$ and $t$ in the time interval $[0,T]$. Two forms are proposed:
+
+\begin{itemize}
+\item Exponential: $\corfunc_c(s,t) = \exp \Biggl\{-2\frac{1}{\corpar_c} \frac{|t-s|}{T}\Biggr\}$,
+\item Periodic: $\corfunc_c(s,t) = \exp\Biggl\{-2\frac{1}{\corpar_c} \, \sin^2 \left(\pi \, \frac{(t-s)}{T} \right)\Biggr\}$,
+\end{itemize}
+
+\noindent where the exponential form considers the relationship decay for proportional to the absolute distance between two instants $s$ and $t$ and the periodic form considers a cyclical relationship in replicates. Both correlation structures are displayed in Figure~\ref{fig:corstructure} for different values of correlation parameter $\omega$.
+
+
+<<corPlot>>=
+corExp <- function(d,theta)
+    exp(-2*(1/theta)*abs(d))
+corPer <- function(d,theta)
+    exp(-2*(1/theta)*(sin(pi*d))^2)
+@
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{.45\textwidth}
+    <<expPlot,fig=TRUE,fig.width=3.5,fig.height=3>>=
+    <<corPlot>>
+    library(ggplot2)
+    library(dplyr)
+    dd <- data.frame(diff = rep(seq(0,1,length.out=200),times=5),
+                     Omega = 1/rep(c(.5,1,2,4,8),each=200))
+    dd$Cor = corExp(dd$diff, dd$Omega)
+    dd %>%
+        mutate(Omega = as.factor(Omega)) %>%
+        ggplot(aes(x=diff,y=Cor, col=Omega)) +
+        geom_line() +
+        xlab("|t-s|/T") + ylab("Correlation") +
+        theme(legend.position="top")
+    @
+    \caption{Exponential}
+  \end{subfigure}
+  \begin{subfigure}{.45\textwidth}
+    <<perPlot,fig=TRUE,fig.width=3.5,fig.height=3>>=
+    <<corPlot>>
+    library(ggplot2)
+    library(dplyr)
+    dd <- data.frame(diff = rep(seq(-1,1,length.out=200),times=5),
+                     Omega = 1/rep(c(.5,1,2,4,8),each=200))
+    dd$Cor = corPer(dd$diff, dd$Omega)
+    dd %>%
+        mutate(Omega = as.factor(Omega)) %>%
+        ggplot(aes(x=diff,y=Cor, col=Omega)) +
+        geom_line() + xlab("(t-s)/T") + ylab("Correlation") +
+        theme(legend.position="top")
+    @
+    \caption{Periodic}
+  \end{subfigure}
+  \caption{Correlation structures: (a) exponential and (b) periodic for different configurations of $\omega$ parameter.}
+  \label{fig:corstructure}
+\end{figure}
+
+% \subsubsection{The aggregated covariance structure}
+% \label{sec:aggrcov}
+
+% The aggregated model considers indepence between replicates and groups, so the covariance functional $\covmatrix_j(\cdot,\cdot)$ is directly the sum of subject covariances as in  \myeqref{eq:sigma}. Substituting \myeqref{eq:covstructure} in \myeqref{eq:sigma} we have
+
+% \begin{equation}
+%   \label{eq:aggrcov}
+%   \covmatrix_j(s,t)
+%   =
+%   \mysum{c}{C}
+%   \,
+%   \mjc
+%   \:
+%   \varfunc_c(s) \,
+%   \corfunc_c(s,t) \,
+%   \varfunc_c(t),  
+% \end{equation}
+
+% \noindent where the user have the possibility to choose between different combinations of variance and correlation parametrization of Section~\ref{sec:varfunc} and Section~\ref{sec:corfunc}.
+
+\subsection{Model likelihood}
+
+Let $\Yijt \sim GP \Bigl( \mu_j(t), \, \covmatrix_j(t,t) \Bigr)$, with
+
+\begin{align}
+  \mu_j(t)
+  =&     
+     \:
+     \mysum{c}{C}
+     \mjc \,
+     \vecbasisfunc(t) \bbeta_c
+      +
+      \bcovar_j \veccovarpar \label{eq:muj} \\
+  \covmatrix_j(s,t)
+  =&\:
+  \mysum{c}{C}
+  \,
+  \mjc
+  \:
+  \varfunc_c(s) \,
+  \corfunc_c(s,t) \,
+  \varfunc_c(t).    \label{eq:aggrcov}
+\end{align}
+
+The functional $\mu_j(\cdot)$ in \myeqref{eq:muj} is written as the sum of single or double components mean signals $\tc_c(\cdot)$ and covariates. On the other hand, the covariance functional $\covmatrix_j(\cdot,\cdot)$ have the possibility to choose between different combinations of variance and correlation parametrization of Section~\ref{sec:varfunc} and Section~\ref{sec:corfunc}.
+
+Given a sample
+\begin{equation}
+  \label{eq:sample}
+  \Bigl\{
+  \byij \, : \:
+  \byij
+  =
+  \bigl(
+    y_{ij}(t_1), \dots, y_{ij}(t_n)
+    \bigr)
+    \, | \, i=1,2,\dots,I \text{ and }
+    j=1,2,\dots,J
+  \Bigr\},
+\end{equation}
+
+\noindent and independence among every combination of $i$ and $j$, the likelihood of the aggregated model is written as
+\begin{align}
+  \mathcal{L}
+  \Bigl(
+    \parsVec | \byij
+  \Bigr)
+  =&
+     \prod_{i=1}^I
+     \prod_{j=1}^J
+     \,
+     f \Bigl( \byij ; \parsVec \Bigr) \\
+  =&
+     \prod_{i=1}^I
+     \prod_{j=1}^J
+     \,
+     \frac{1}{\sqrt{(2 \pi)^n \, det(\bcovmatrix_j)}}
+     \exp
+     \left\{
+     -\frac{1}{2}
+     (\bmc_j - \byij)^\transp
+     \bcovmatrix_j^{-1}
+     (\bmc_j - \byij)
+     \right\},
+     \label{eq:aggrmodellikelihood}
+\end{align}
+
+\noindent with $\parsVec$ vector of parameters of $\bmc_j \in \mathbb{R}^n, \forall j$ and $\bcovmatrix_j \in \mathbb{R}^{n \times n}, \forall j$ positive-definite given by
+\begin{align}
+  \bmc_j =&\, \bigl(\mu_j(t_1), \dots, \mu_j(t_n) \bigr)\\
+  \bcovmatrix_j
+  =& \,
+  \Bigl\{
+    \covmatrix_j(s,t) : \, \text{for }  s \text{ and } t \text{ in } (t_1, \dots, t_n)
+  \Bigr\}.
+\end{align}
+
+%The proof that $\bcovmatrix_j$ is positive-definite is given in Proposition~\ref{prop:covpositive}.
+
+\section{Model-based clustering analysis}
+\label{sec:clustering}
+
+Let $\latvar_j$ be a random variable such that
+\begin{align}
+  \label{eq:problatent}
+  \prob{\latvar_j = \idlat} = \latpar_{j\idlat},
+  \qquad
+  &\text{for }
+    \idlat = 1,2,\dots,\bigidlat. \\
+  &\text{and } \mysum{\idlat}{\bigidlat} \latpar_{j\idlat} = 1, \: \forall j = 1,2,\dots,J \nonumber
+\end{align}
+
+\noindent Consider $\latvar_j$ a latent variable that assign the group $j$ to a cluster $b$. In \myeqref{eq:problatent} we have the probability of group $j$ belong to cluster $b$.
+
+Suppose that given $\latvar_j = b$, $\Yijt$ is a Gaussian process relative to its cluster $b$. Hence,
+\begin{equation}
+  \Yijt | \latvar_j = b
+  \sim
+  GP
+  \Bigl(
+  \mu_{jb}(t) ,\,
+  \covmatrix_{jb}(t,t)
+  \Bigr).
+\end{equation}
+
+Thus the introduction of latent variable $\latvar_j$ lead to a mixture of Gaussian process regression \cite{shi2005hierarchical}. Each cluster has its respectively set of parameters $\parsVec_b$ and consequently its own set of mean signals $\tc_{cb}(\cdot)$, for $c=1,\dots,C$ and $b=1,\dots,B$.
+
+\subsection{Clustering model likelihood}
+
+Let $\byij$ be the vector of observed aggregated signal as in \myeqref{eq:sample} and $\slatvar_j$ the observed clustering variable.
+Let $\parsVec = \big\{ \bbeta, \bcovarpar, \bvarpar, \bcorpar, \bvarfuncpar, \bbeta^\completefunc \big\}$ be the set of parameters of aggregated model and $\bpi$ the parameters of the latent variable. The likelihood of complete aggregated model is written as
+
+\begin{align}
+  \mathcal{L}&
+  \Bigl(
+  \parsVec, \bpi | \byij, \slatvar_j=b 
+  \Bigr)
+  =
+     \prod_{i=1}^I
+     \prod_{j=1}^J
+     f \Bigl( \byij, \slatvar_j=b | \parsVec, \bpi \Bigr) \\
+  = &
+      \prod_{i=1}^I
+     \prod_{j=1}^J
+      f \Bigl( \byij | \slatvar_j=b ; \, \parsVec \Bigr)
+      \prob{\latvar = b | \bpi}  \\
+  = &
+      \prod_{i=1}^I
+      \prod_{j=1}^J
+      \prod_{b=1}^B
+      \Biggl(
+      f \Bigl( \byij | \slatvar_j=b ; \, \parsVec \Bigr)
+      \prob{\latvar = b | \bpi}
+      \Biggr)^{\indic{\slatvar_j = b}}\\
+  =&
+     \prod_{i=1}^I
+     \prod_{j=1}^J
+     \prod_{b=1}^B
+     \Biggr(
+     \frac{1}{\sqrt{(2 \pi)^n \, det(\bcovmatrix_j)}} %\nonumber \\
+%  & \qquad \times
+     \exp
+     \left\{
+     -\frac{1}{2}
+     (\bmc_{jb} - \byij)^\transp
+     \bcovmatrix_{jb}^{-1}
+     (\bmc_{jb} - \byij)
+    \right\} %\nonumber \\
+%   & \qquad \times
+     \pi_{jb}
+      \Biggr)^{\indic{\slatvar_j = b}}
+      \label{eq:clusterlk}
+\end{align}
+
+
+\section{Estimation}
+\label{sec:estimation}
+
+The estimation procedures are based on the Gaussian process assumption and least squares approach. The later provides fast computation and under normal distribution is non-biased and consistent estimator~\cite{shi2011gaussian}. The clustering analysis is performed by latent variable modeling which results in a mixture of Gaussian process~\cite{tresp2001mixtures}. Then, estimates are obtained using the well-known EM algorithm approach.
+
+\subsection{The aggregated model}\label{sec:aggrestimate}
+
+The representation of $\mu_j(\cdot)$ in Equation~(\ref{eq:muj}) can be written as the product of a functional design matrix representation $\bX_j(\cdot)$ and the vector of parameters $\bbeta$:
+
+\begin{equation}
+  \label{eq:design}
+  \mu_j(t) = \bX_j(t) \bbeta,
+\end{equation}
+
+\noindent where $\X_j(\cdot)$ is the column binding of basis functions multiplied by its respective market $\mjc$ and the covariates $\bcovar_j$, while $\bbeta$ is the binding of parameters of basis expansion and parameters of covariates, as
+
+\begin{align}
+  \bX_j(t)
+  =&
+     \begin{pmatrix}
+       \mj{1} \basisfunc(t)
+       &    \mj{2} \vecbasisfunc(t)
+       & \cdots
+       &    \mj{C} \vecbasisfunc(t)
+       & \bcovar_j
+     \end{pmatrix}_{1 \times (KLC+P)}, \\
+  \bbeta^\transp
+  = &
+      \begin{pmatrix}
+        \bbeta_1
+        &\bbeta_2
+        &\cdots
+        &\bbeta_C
+        &\bcovarpar
+      \end{pmatrix}_{1 \times (KLC+P)}.
+\end{align}
+
+Suppose an observed $\byij$ at times $t_1, \dots, t_N$, we can represent its aggregated model as
+
+\begin{equation}
+  \label{eq:yijvec}
+  \byij = \bX_j \bbeta + \vecerroij,
+\end{equation}
+
+\noindent where $\bX_j$ and $\vecerroij$ are row bindings of $N$ evaluations of $\bX_j(\cdots)$ and $\vecerroij(\cdot)$ at times $t_1, \dots, t_N$, that is
+
+\begin{align}
+  &\bX_j
+  =
+  \begin{pmatrix}
+    \bX_j(t_1) \\
+    \bX_j(t_2) \\
+    \vdots \\
+    \bX_j(t_N) 
+  \end{pmatrix}_{N \times (KLC+P)}
+  &
+    \text{and}
+  &
+  &
+    \vecerroij
+    =
+    \begin{pmatrix}
+      \erroij(t_1) \\
+      \erroij(t_2) \\
+      \vdots \\
+      \erroij(t_N) 
+    \end{pmatrix}_{N \times 1}.
+  &
+\end{align}
+
+Furthermore, we may represent the sample $\{ \byij \}_{i,j}$ as a single vector $\by$ and also a representation of $\bX$ and $\berro$ finding the equation
+
+\begin{equation}
+  \label{eq:byijmodel}
+  \by = \bX \bbeta + \berro,
+\end{equation}
+
+\noindent where
+
+\begin{align}
+  &
+    \by
+    =
+    \begin{pmatrix}
+      \by_{11} \\
+      \by_{21} \\
+      \vdots \\
+      \by_{I1} \\
+      \by_{12} \\
+      \vdots \\
+      \by_{IJ}
+    \end{pmatrix}_{NIJ \times 1}
+  &
+    ,
+  &
+  &
+    \bX
+    =
+    \begin{pmatrix}
+      \bX_1 \\
+      \bX_1 \\
+      \vdots\\
+      \bX_2 \\
+      \vdots\\
+      \bX_J \\
+    \end{pmatrix}_{NIJ \times (KLC+P)}
+  &
+    \text{and }
+  &
+  &
+    \berro
+    =
+    \begin{pmatrix}
+      \berro_{11} \\
+      \berro_{21} \\
+      \vdots \\
+      \berro_{I1} \\
+      \berro_{12} \\
+      \vdots \\
+      \berro_{IJ}
+    \end{pmatrix}_{NIJ \times 1}.
+  &
+\end{align}
+
+Thus $f(\by | \bbeta, \bcovmatrix)$ is a Normal density with mean $\bX \bbeta$ and sparse covariance matrix $\bcovmatrix$, with the later as a block diagonal of the matrices $\bcovmatrix_1, \dots, \bcovmatrix_j$. The matrix $\bcovmatrix$ is positive-definite and has dimension $NIJ \times NIJ$.
+
+The aggregated model log-likelihood in Equation~\ref{eq:aggrmodellikelihood} can be written as a function of sample vector $\by$
+
+\begin{align}
+  \ell
+  \Bigl(
+  \bbeta, \bcovmatrix
+  |
+  \by
+  \Bigr)
+  =&
+     \log \mathcal{L  \Bigl(
+     \bbeta, \bcovmatrix
+     |
+     \by
+     \Bigr)} \nonumber \\
+  \propto
+   &
+     -\frac{1}{2} \log\bigl( det(\bcovmatrix) \bigr)
+     +
+     -\frac{1}{2}
+     \bigl(
+     \bX \bbeta - \by
+     \bigr)^\transp
+     \bcovmatrix^{-1}
+     \bigl(
+     \bX \bbeta - \by
+     \bigr).
+    \label{eq:vecaggrmodellk}
+\end{align}
+
+Equation~(\ref{eq:vecaggrmodellk}) configures a Gaussian process regression and thus $\bbeta$ and $\bcovmatrix$ can be estimated separately because they are independent \cite{shi2011gaussian,ramsay2005functional}. The estimator of $\bbeta$ have closed form and $\bcovmatrix$ is estimated using a numerical optimization procedure, such Quasi-Newton method \textit{BFGS} or \textit{Simulated Annealing} \cite{fletcher2013practical,kirkpatrick1983optimization,ruggiero1997calculo}. The complete estimation procedure is described in the following Section~\ref{sec:aggralgorithm}.
+
+
+\subsubsection{Algorithm} \label{sec:aggralgorithm}
+
+Given the log-likelihood in \myeqref{eq:vecaggrmodellk} and a sample $\by$, we estimate basis expansion and covariate parameters $\bbeta$ and covariance parameters $\parsVec_{\bcovmatrix} = \bigl( \bvarpar,\bcorpar,\bvarfuncpar,\bbeta^\varfunc \bigr)$ using the following algorithm
+
+\begin{algo} \label{algo:aggrmodel}
+  Given a sample $\by$, at run $r=0$ get initial values for $\bbeta^{(0)}$. At run $r>0$, do
+  \begin{enumerate}
+  \item Fix $\bbeta^{(r-1)}$ to obtain $\parsVec_{\bcovmatrix}^{(r)}$ by optimizing the log-likelihood in \myeqref{eq:vecaggrmodellk}.
+  \item Fix $\parsVec_{\bcovmatrix}^{(r)}$ to obtain $\bbeta^{(r)}$ via
+    \begin{equation}
+      \label{eq:betahat}
+      \bbeta^{(r)}
+      =
+      \Bigl(
+      \bX^\transp
+      \bigl(\bcovmatrix^{(r)}\bigr)^{-1}
+      \bX
+      \Bigr)^{-1}
+      \Bigl(
+      \bX^\transp
+      \bigl(\bcovmatrix^{(r)}\bigr)^{-1}
+      \by
+      \Bigr).
+    \end{equation}
+  \item If $|\ell_{obs}^{(r)} - \ell_{obs}^{(r-1)}| < \xi$, then stop! If not, add one unit to run $(r)$ and repeat.
+  \end{enumerate}
+\end{algo}
+
+In Algorithm~\ref{algo:aggrmodel}, $\ell_{obs}^{(r)}$ is the observed likelihood given parameters at run $(r)$ and $\xi>0$ is the convergence criterion, typically established as $10^{-6}$.
+
+The initial values for $\bbeta$ can be obtained by fitting a linear model without considering the covariance structure of aggregated model, since $\bbeta$ and $\bcovmatrix$ are independent.
+
+To improve computational performance and save memory allocation we can write \myeqref{eq:betahat} in terms of minor matrices:
+
+\begin{equation}
+      \label{eq:betahat_opt}
+      \bbeta^{(r)}
+      =
+      \left(
+      I \sum_{j=1}^J
+      \bX_j^\transp
+      \bigl(\bcovmatrix_j^{(r)}\bigr)^{-1}
+      \bX_j
+      \right)^{-1}
+      \left(
+      \sum_{i=1}^I  \sum_{j=1}^J
+      \bX_j^\transp
+      \bigl(\bcovmatrix_j^{(r)}\bigr)^{-1}
+      \byij
+      \right).
+    \end{equation}
+
+\subsubsection{Condition of identifiability}
+\label{sec:ident}
+
+To assure the inverse of the left hand size of $\bbeta^{(r)}$ in \myeqref{eq:betahat}, the sample $\by$ must have a number of groups greater than the number of subject's type, in other words, $J<C$. This condition ensures that $\bX$ have full rank.
+
+\subsection{The model-based cluster}
+
+The latent variable $\latvar_j$ introduced in Section~\ref{sec:clustering} makes the likelihood of the complete model in \myeqref{eq:clusterlk} dependent of a information that can not be observed. In this case, we may use the EM algorithm approach to estimate the parameters of mixtures of Gaussian processes \cite{mclachlan2007algorithm,dempster1977maximum}.
+
+\subsubsection{E-Step}
+
+Given a sample $\{\byij\}_{i,j}$ and $\latvar_j$, let $\ell$ be the log-likelihood of parameters $\parsVec$ and $\bpi$ written as
+
+\begin{align}
+  \ell
+  &
+  \Bigl(
+  \parsVec, \bpi
+  |
+  \byij,
+  \slatvar_j=b
+  \Bigr)
+  =
+     \log \mathcal{L}
+     \Bigl(
+     \parsVec, \bpi
+     |
+     \byij, \slatvar_j =b
+     \Bigr) \nonumber \\
+  & 
+    \propto
+     \mysum{i}{I}
+     \mysum{j}{J}
+     \mysum{b}{B}
+    \indic{\slatvar_j = b} \times %\nonumber \\
+     \Biggl(
+  -\frac{1}{2} \log \bigl(det(\bcovmatrix_j) \bigr) \nonumber \\
+  &\qquad
+          -\frac{1}{2}
+     (\bmc_{jb} - \byij)^\transp
+     \bcovmatrix_{jb}^{-1}
+     (\bmc_{jb} - \byij)
+     + \log \pi_{jb}
+    \Biggr).
+    \label{eq:estep1}
+\end{align}
+
+The E-Step of EM algorithm suppose the latent variable as a random variable and take its expected value given all other parameters to find a function $Q(\cdot)$ that does not depend on the unobserved $\latvar_j$. So,
+
+\begin{align}
+  Q
+  \Bigl(
+  \parsVec, \bpi
+  |\,
+  \byij
+  \Bigr)
+  =&\:
+     \mathbb{E}
+     \Biggl[
+     \ell
+     \Bigl(
+     \parsVec, \bpi
+     |
+     \byij,
+     \slatvar_j=b
+     \Bigr)
+     \Big|
+     \,
+     \parsVec, \bpi, \byij
+     \Biggr] \nonumber \\
+  \propto
+   &
+     \mysum{i}{I}
+     \mysum{j}{J}
+     \mysum{b}{B}
+    \prob{\latvar_j = b | \byij, \bpi} \times %\nonumber \\
+     \Biggl(
+  -\frac{1}{2} \log \bigl(det(\bcovmatrix_j) \bigr) \nonumber \\
+  &\qquad
+          -\frac{1}{2}
+     (\bmc_{jb} - \byij)^\transp
+     \bcovmatrix_{jb}^{-1}
+     (\bmc_{jb} - \byij)
+     + \log \pi_{jb}
+    \Biggr).
+    \label{eq:qfunction}
+\end{align}
+
+Notice that the indicator function in \myeqref{eq:estep1} becomes a probability in \myeqref{eq:qfunction} after applying the expected value operator. Using Bayes Theorem, the probability is computed as
+
+\begin{equation}
+  \label{eq:prob}
+  \prob{\latvar_j = b | \byij, \bpi}
+  =
+  \frac
+  {f\Bigl( \byij | \slatvar_j=b \Bigr) \times \prob{\latvar_j=b}}
+  {\mysum{b^\prime}{B} f\Bigl( \byij | \slatvar_j=b^\prime \Bigr) \times \prob{\latvar_j=b^\prime}}.
+\end{equation}
+
+
+\subsubsection{M-Step}
+
+Given \myeqref{eq:qfunction} and \myeqref{eq:prob} it is possible to advance to M-Step and maximize function $Q(\cdot)$ in terms of parameters $\parsVec$ and $\bpi$. However, since $\mysum{b}{B} \pi_{jb} = 1, \forall j,$ we must consider this restriction in maximization procedure. For this, we use the \textit{Lagrange Multipliers} approach. Thus, define $Q^\star(\cdot)$ the function to be maximized considering the aforementioned restriction
+
+\begin{equation}
+  \label{eq:mstep1}
+  Q^\star
+  \Bigl(
+  \parsVec, \bpi, \lambda
+  |\,
+  \byij
+  \Bigr)
+  =
+  Q
+  \Bigl(
+  \parsVec, \bpi
+  |\,
+  \byij
+  \Bigr)
+  -
+  \sum_{j=1}^J
+  \lambda_j
+  \left(
+    \mysum{b}{B} \pi_{jb} - 1
+  \right),
+\end{equation}
+
+\noindent where $\lambda$ is parameter of Lagrange to be computed.
+
+There are independence between mean signals parameters $\bbeta$, covariance parameters $\parsVec_{\bcovmatrix}$, latent variable parameters $\bpi$ and $\lambda$. Then its possible to divide $Q^\star(\cdot)$ as a function of each set of parameters in order to estimate them independently. See
+
+\begin{align}
+  Q^\star
+  \bigl(
+  \parsVec_{\bcovmatrix}
+  |
+  \byij
+  \bigr)
+  &\overset{\boldsymbol \parsVec_{\bcovmatrix}}{\propto}
+       \mysum{i}{I}
+     \mysum{j}{J}
+     \mysum{b}{B}
+    \prob{\latvar_j = b | \byij, \bpi} \times %\nonumber \\
+     \Biggl(
+  -\frac{1}{2} \log \bigl(det(\bcovmatrix_j) \bigr) \nonumber \\
+  &\qquad
+          -\frac{1}{2}
+     (\bmc_{jb} - \byij)^\transp
+     \bcovmatrix_{jb}^{-1}
+     (\bmc_{jb} - \byij)
+     \Biggr) \label{eq:msigma}\\[.5cm]
+  Q^\star
+  \bigl(
+  \bbeta
+  |
+  \byij
+  \bigr)
+  &\overset{\boldsymbol \bbeta}{\propto}
+     \mysum{i}{I}
+     \mysum{j}{J}
+     \mysum{b}{B}
+  -\frac{1}{2}
+  (\bmc_{jb} - \byij)^\transp
+  \bcovmatrix_{ijb}^\star
+    (\bmc_{jb} - \byij) \label{eq:mbeta}\\[.5cm]
+  Q^\star
+  \bigl(
+  \bpi
+  |
+  \byij
+  \bigr)
+  &\overset{\boldsymbol \bpi}{\propto}
+    \mysum{i}{I}
+    \mysum{j}{J}
+    \mysum{b}{B}\,
+    \prob{\latvar_j = b | \byij, \bpi} \times
+    \log \pi_{jb}
+    -
+    \sum_{j=1}^J
+    \lambda_j
+  \left(
+    \mysum{b}{B} \pi_{jb} - 1
+    \right), \label{eq:mpi}
+\end{align}
+
+\noindent where $\bcovmatrix_{ijb}^\star
+    =
+    \prob{\latvar_j = b | \byij, \bpi} \times 
+  \bcovmatrix_{jb}^{-1}$
+
+ From Equation~(\ref{eq:mpi}) we obtain $\lambda_j = -J, \forall j$ and a closed form estimator 
+ \begin{equation}
+   \hat{\pi}_{ij} = \frac{1}{I}
+   \mysum{i}{I}
+%   \mysum{J}{J}
+   \prob{\latvar_j = b | \byij, \bpi}.
+   \label{eq:pihat}
+ \end{equation}
+
+ Since parameters $\bbeta_b$ are independent between clusters, we can rewrite Equation~(\ref{eq:mbeta}) for a particular cluster $b$ as
+ \begin{equation}
+   \label{eq:betahat1}
+  Q^\star
+  \bigl(
+  \bbeta_b
+  |
+  \byij
+  \bigr)
+  \propto
+  -\frac{1}{2}
+  \bigl(
+  \bX \bbeta_b - \by
+  \bigr)^\transp
+  \bcovmatrix_b^\star
+  \bigl(
+  \bX \bbeta_b - \by
+  \bigr),  
+\end{equation}
+
+\noindent where $\bX \in \mathbb{R}^{(NIJ \times (CKLB+P))}$, $\bbeta_b \in \mathbb{R}^{(CKLB+P)}$  and  block diagonal matrix $\bcovmatrix_b^\star \in \mathbb{R}^{(NIJ \times NIJ)}$ are built as in Section~\ref{sec:aggrestimate}. The quadratic form in Equation~(\ref{eq:betahat1}) result in a closed form estimator for each cluster $b$:
+
+\begin{equation}
+  \label{eq:betahat2}
+  \hat{\bbeta}_b
+  =
+  \Bigl(
+  \bX^\transp
+  \bigl(\bcovmatrix_b^\star \bigr)^{-1}
+  \bX
+  \Bigr)^{-1}
+  \Bigl(
+  \bX^\transp
+  \bigl(\bcovmatrix_b^\star \bigr)^{-1}
+  \by
+  \Bigr).
+\end{equation}
+
+The same memory allocation and computational optimization can be performed in \myeqref{eq:betahat2} as in \myeqref{eq:betahat_opt}
+
+Finally, Equation~(\ref{eq:msigma}) does not have a closed form for maximization, so we use numerical methods for covariance parameters estimation.
+
+\subsubsection{Algorithm}
+
+Given estimators of aggregated model with latent variable, it is possible to build the estimation routine which updates E-Step to proceed to M-Step. 
+
+\begin{algo}
+  \label{algo:em}
+    Given a sample $\by$, at run $r=0$ get initial values for $\bbeta_b^{(0)}, \forall b=1,2,\dots, B$, $\parsVec_{\bcovmatrix}^{(0)}$ and $\bpi^{(0)}$. At run $r>0$, do
+    \begin{enumerate}
+    \item E-Step: for $b=1,\dots,B$, compute
+      $\prob{\latvar_j = b | \byij, \bpi^{(r-1)}, \bbeta_b^{(r-1)}, \bcovmatrix_b^{(r-1)}}$.
+    \item M-Step: maximize $Q^\star \Bigl( \parsVec | \parsVec^{(r-1)}  \Bigr)$ to obtain $\parsVec^{(r)}$:
+      \begin{enumerate}
+      \item Fix $\bbeta_b^{(r-1)}$ and $\bpi^{(r-1)}$ to obtain $\parsVec_{\bcovmatrix}^{(r)}$ by optimizing \myeqref{eq:msigma}.
+      \item Fix $\parsVec_{\bcovmatrix}^{(r-1)}$, $\bbeta_b^{(r-1)}$ and $\bpi^{(r-1)}$ to obtain $\bpi^{(r)}$ via Equation~(\ref{eq:pihat}).
+    \item Fix $\parsVec_{\bcovmatrix}^{(r)}$ and $\bpi^{(r)}$ to obtain $\bbeta^{(r)}$ via Equation~(\ref{eq:betahat2}).
+    \end{enumerate}
+  \item If $|\ell_{obs}^{(r)} - \ell_{obs}^{(r-1)}| < \xi$, then stop! If not, add one unit to run $(r)$ and repeat.
+      \end{enumerate}
+    \end{algo}
+
+\subsubsection{Initial values and number of clusters}
+\label{sec:init}
+
+It is a challenge to get initial values for all parameters, but a similar approach used in Section~\ref{sec:aggralgorithm} is proposed. Choose a number of cluster $B$ and a fixed number of trials $G$ where for each trail each group is randomly assigned to a cluster. Split the data between clusters and fit a simple aggregated model. The model with smaller squared error from the $G$ trials will be selected to provide initial $\bbeta_b$. The initial $\bpi$ is the proportion of each cluster of the best fitted model. The trial winner can also be used to provide initial covariance parameters.
+
+The number of clusters unfortunately is very dependent on user previous information. One might use the suggested approach of random trials to also test the best number of parameters. However, since model fitting can be expansive, the user might spend a reasonable time to get desired results. 
+
+\subsubsection{Condition of identifiability}
+\label{sec:ident2}
+
+As in Section~\ref{sec:ident}, there are conditions for model fitting. Since there are at least  $B$ times the number of parameters, the procedure requires $J > CB$, that is, the number of groups must be greater than the number of estimated mean signals.
+
+\section{Model check}
+\label{sec:modelcheck}
+
+The parameter estimation presented in Section \ref{sec:estimation} are based on a Gaussian process regression framework \cite{shi2011gaussian,tresp2001mixtures}. In this section we will study how to assess the uncertainty on estimated mean curves and thier covariance parameters.
+
+Inferences on the separated mean curve can be performed by taking the closed form of the expansion parameters in \myeqref{eq:betahat} and \myeqref{eq:betahat2}, since it is a function of the Gaussian process $Y_{ij}(\cdot)$. In fact, we can say that
+
+\begin{equation}
+  \label{eq:betadist}
+  \hat{\bbeta}
+  \sim
+  Normal
+  \Bigl(
+  \bbeta,
+  \mathbf{A}
+  \bcovmatrix
+  \mathbf{A}^\transp
+  \Bigr),
+\end{equation}
+
+\noindent with $\bbeta \in \mathbb{R}^{CK}$ as the real expansion parameters and $\mathbf{A} \in \mathbb{R}^{CK \times NIJ}$ defined as
+
+\begin{equation}
+  \label{eq:covbeta}
+\mathbf{A} = \Bigl(
+      \bX^\transp
+      \bcovmatrix^{-1}
+      \bX
+      \Bigr)^{-1}
+      \bX^\transp
+      \bcovmatrix^{-1}.
+\end{equation}
+
+With $\hat{\bbeta}$ distribution in \myeqref{eq:betadist} we can write confidence intervals based on its standard errors in the diagonal of $  \mathbf{A}\bcovmatrix \mathbf{A}^\transp$.
+
+On the other hand, the covariance parameters $\boldsymbol \Theta_{cov}$ are obtained via numerical optimization. In this thesis we use Quasi-Newton methods available in R language \cite{fletcher2013practical,rlang}, so the parameters standard errors can be obtained from the observed hessian matrix $\mathbf{H}$ and its relationship with the Fisher information matrix. So,
+
+\begin{equation}
+  \label{eq:secov}
+  SE
+  \bigl(
+  \boldsymbol \Theta_{cov}
+  \bigr)
+  =
+  \sqrt{diag
+    \Bigl(
+    \mathbf{H}^{-1}
+  \Bigr)}.
+\end{equation}
+
+The nesting property of the variance functionals structures can be tested by looking at the confidence intervals for its basis expansion parameters $\bbeta_c^\star$. If all their intervals contain the value $\sigma_c$, then it is an evidence of an homogeneous or uniformly homogeneous case.
+
+Finally, the model fit diagnosis can be performed by the standard approach to look at fit residuals and if they are randomly located around zero.

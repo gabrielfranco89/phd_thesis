@@ -1,0 +1,645 @@
+
+
+
+
+\chapter{Results}
+\label{chap:results}
+
+% General
+This chapter applies the proposed aggregated data model to a real data set of electrical energy stations in United Kingdom. The simple aggregated model will be used as a first step to obtain  mean curves and covariance estimates. In sequence, air temperature data will be used as the additional functional component creating a mean surface to explain customers energy consumption at different weather configuration. Finally, the model-based clustering will be performed to investigate how stations are grouped according to their similar mean curves.
+
+% Chapter organization
+Section~\ref{sec:res-dataset} presents the data set characteristics and an exploratory data analysis. Section~\ref{sec:gavin-homog} fit the simple aggregated model, followed by the full aggregated model in Section~\ref{sec:gavin-fm} and completing in the clustering analysis in Section~\ref{sec:gavin-cluster}.
+
+
+
+\section{The dataset}
+\label{sec:res-dataset}
+
+% About what?
+The data set contains information of load profiles observed at every 10 minutes of 407 electrical energy substations in the Northwest of United Kingdom. Observations were taken from October 28th, 2012, to March 30th, 2013, counting up to 154 days. Each substation supply energy up to 8 types of customers, which will be detailed in the next section.
+
+% Previously used where?
+Provided by professor Dr. Gavin Shaddick, the data set were used in two articles: to cluster and classify substations~\cite{li2015development1} and to estimate peak-loads using clusterwise regression \cite{li2015development2}.
+
+% Cons (see Ran Li thesis)
+However, the 8 customer division of UK load profiles date from 1990s decade and were proven to be inefficient~\cite{wilks2010demand}. Customers are usually organized as domestic, commercial and industry with different variability between them but also inside their own group. For example, the UK profiles separates customers in domestic and non-domestic, which means that a small delicatessen and a supermarket are assigned to the same type.
+
+% Use previous to justify subset (don't bother with numbers yet)
+The variability of non-domestic groups make the aggregated data model inviable because there is no mean curve that represents both a supermarket and a small delicatessen. Thus we used the subset of substations having only domestic customers to make it possible to apply the proposed model in this thesis, resulting in 12 groups with two types of customer:
+
+\newpage
+\begin{itemize}
+\item C1: Non restricted domestic customers
+\item C2: Economy 7 domestic customers.
+\end{itemize}
+
+The later is  a differential tariff provided by United Kingdom electricity suppliers with cheaper electricity during the off-peak at night periods. Also, to avoid Christmas holidays variation we used observations from January 3rd ahead.
+
+% Explain temperature
+Temperature measures were obtained through an API of the website World Weather Online. We used the 5 primaries of stations, which will be detailed in Section~\ref{sec:eda}, to request locations. However, the period required had only observations for every 3 hours. So, to achieve temperature frequency at  every 10 minutes as the data set we performed a cubic B-Splines interpolation. 
+
+
+\subsection{Exploratory data analysis}
+\label{sec:eda}
+
+
+
+
+
+% Show figure and market
+Figure~\ref{fig:gavin1} provides functional data visualization of the load profiling for the 61 dates from January 3rd to March 30th of 2013, colorized according to the temperature scale located in the right. Each panel represents an electrical station with customer market described in Table~\ref{tab:gavin-mkt}. 
+
+% Decribe figure
+Most panels have a similar pattern of low energy consumption from midnight to approximately 9:00 with apparently homogeneous variance. The period between 10am and 4pm have the most intense variability, maybe because is the period where most people leave their houses to go to work and proceeding to 17:00 onward the variability apparently stabilizes again even in the load peak at 19:00. These stations have majority of unrestricted domestic customers (C1), dominating more than 90\% of the market.
+
+In the opposite direction, stations S4 and S12 do not follow the aforementioned pattern, they are also distinct between both. Station S4 is the only with majority of  ``Economy 7'' domestic customers  (C2), representing 80.73\% of market share. The peak at late night and before sunrise might be because the lower tariffs at night, encouraging energy consumption outside daytime. In sequence, station S12 have a third of its market represented by customers of type C2 which result in relatively higher loads in early morning but peak at 19:00 as well. Consequently, it has more dispersion before 9:00 compared to most stations and probably even more variability at work period.
+
+
+\begin{table}[b]\centering
+  \caption{Load profile data market and primary distribution.}
+  \label{tab:gavin-mkt}
+% consider a footnote describing customer types
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\begin{tabular}{llrrr}
+\toprule
+Primary & Station & Number & C1 & C2\\
+\midrule
+ & S1 & 512017 & 228 & 3\\
+
+ & S2 & 512050 & 146 & 5\\
+
+\multirow{-3}{*}{\raggedright\arraybackslash Trowbridge Primary} & S3 & 512051 & 151 & 5\\
+\cmidrule{1-5}
+ & S4 & 513044 & 21 & 88\\
+
+\multirow{-2}{*}{\raggedright\arraybackslash Cyncoed} & S5 & 513049 & 218 & 7\\
+\cmidrule{1-5}
+ & S6 & 531834 & 155 & 17\\
+
+\multirow{-2}{*}{\raggedright\arraybackslash Ringland Newport} & S7 & 531835 & 194 & 12\\
+\cmidrule{1-5}
+ & S8 & 532204 & 173 & 9\\
+
+ & S9 & 532205 & 163 & 12\\
+
+ & S10 & 532206 & 158 & 2\\
+
+\multirow{-4}{*}{\raggedright\arraybackslash Llantarnam Primary} & S11 & 532207 & 244 & 10\\
+\cmidrule{1-5}
+Usk & S12 & 535445 & 46 & 23\\
+\bottomrule
+\end{tabular}
+
+
+\end{knitrout}
+\end{table}
+
+%Table~\ref{tab:gavin-mkt} shows the market of unrestricted domestic customer (C1) and ``Economy 7'' domestic customer (C2) for each station. In fact, stations are originally identified by their number, but to facilitate their identification we labeled each sequentially. Also, every station is part of a primary group named by their location in Southwest of United Kingdom and displayed in Figure~\ref{fig:map}.
+
+% About temperatures
+Many other factors may influence in load profiles such as humidity, precipitation and temperature. Figure~\ref{fig:gavin1} is colorized according to observed air temperatures. There is not a clear evidence of the impact of temperature on energy load which would occur if there was a clear separation of colors for different lines. Still, it may be useful to explain the variability of work period, where weather is subject to variation caused by clouds, precipitation and wind speed. Indeed, most panels have more color fluctuation during daytime, coinciding with work period great variability, while extremes, night periods, tend to be more stable. Nonetheless station S12 is the exception for temperature pattern as well, where it has higher temperatures when comparing other stations that remains through day and night.
+
+\begin{figure}[t]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/fig_gavin1-1} 
+
+\end{knitrout}
+  \caption{Load profile data of 12 stations in United Kingdom colorized by the current air temperature in Celsius.}
+  \label{fig:gavin1}
+\end{figure}
+
+
+
+% About primaries
+The particularity of station S12 may be explained by its geographic location. Each station belongs to a primary group described in Table~\ref{tab:gavin-mkt} and their map location is indicated in the Google Maps frame in Figure~\ref{fig:map}. Station S12 is located on the northern primary of Usk, a town of Monmouth shire, countryside of Wales, with less than 3 thousand population, the smallest of all primaries. At southwest is Llantarnam, a community in the suburb of Cwmbran with population slightly larger than 4 thousand where is located stations S8 to S11, all composed mostly by customers of type C1. Not so far is located Ringland, in the city of Newport, providing the stations S6 and S7 and with population size  approximately double of Llantarnam. Moving to the capital of Wales we have two primaries: Trowbridge and Cyncoed. Both are communities with population above 10 thousand, 16,194 and 11,148, respectively; and located in the urban area of Cardiff Central. In fact, Cyncoed, which provides the only station with majority of C2, has some of the highest property prices in the country. All cited demographic data are available in the 2011 census of United Kingdom  \cite{uk2011census}.
+
+
+
+\subsection{Opportunities}
+\label{sec:oport}
+
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=.8\textwidth]{figure/map2}
+  \caption{Geographic location of station primaries in United Kingdom.}
+  \label{fig:map}
+\end{figure}
+
+
+% Como o modelo explora esses dados?
+
+%% simple aggrmodel 
+Beyond exploration, the aggregated model can provide typical curves for unrestricted and ``Economy 7'' domestic customers supplied by the electrical energy stations. It can also estimate precise covariance parameters since there are 61 dates considered as replicates. The additional information of temperatures and station primaries can be used in the full model approach to achieve even better model fit on observed curves.
+
+Furthermore, the model-based clustering analysis is interesting to investigate how stations can be grouped according to their typical curves. We have stations from different locations, each one with their particular weather, population and probably different energy consumption habits.
+
+In the next sections we will apply the proposed aggregated models to obtain the typical curves and covariance structure estimates. First, we explore a simple homogeneous aggregated model to get the first typical curves estimates and check if it is well adjusted to the observed data. This step is important to check if it is necessary to add explanatory variables in the full model approach, where temperatures will be incorporated to the typical curve. Finally, we check for clusters with the model-based clustering analysis and identify how stations group themselves given their estimated typical curves.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Simple homogeneous aggregated model}
+\label{sec:gavin-homog}
+
+
+
+
+
+
+% we'll fit homog: two pars per subject. TO explore. used 24 basis
+The first model to explore the load profiling data is the homogeneous aggregated data model. Remember it considers dispersion and decay parameters for each subject type and, in this case, both parameters will have values for unrestricted and ``Economy 7'' domestic customers.
+
+% expectations: possibly not good fit, but an idea
+The homogeneous model may not be the perfect choice because is clear that data does not have homogeneous dispersion along time, as seen in Figure~\ref{fig:gavin1}. Ideally, the complete model is able to capture the heterogeneity of work periods, seemly different of early morning and late night and provide better estimates for covariance structures. However, the experiments in Section~\ref{sec:mpc} showed the homogeneous model still delivers mean curves estimates as precise as the complete model and its covariance parameters may be useful to comprehend the mean dispersion along time and input for initial parameters in the more sophisticated model. Thus the resulting curves might be a good approximation of the real curves if there are no explanatory variables or another factors with significant effects.
+
+
+
+
+\begin{figure}[t!]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/fig_gavin_mc1-1} 
+
+\end{knitrout}
+  \caption{Estimated mean curves for unrestricted (C1) and ``Economy 7'' (C2) domestic customers using an homogeneous aggregated model.}
+  \label{fig:gavin-mc1}
+\end{figure}
+
+
+% mean curves
+To obtain the separation we used 24 cubic B-Splines functions to expand the mean curves, resulting the graph in Figure~\ref{fig:gavin-mc1}. The unrestricted domestic customers have a typical electrical energy consumption smaller than ``Economy 7'' domestic customers. The typical curve of C1 type have insignificant value in early morning, coming to a higher baseline between 9:00 and 16:00, the typical work period, finally reaching its peak at 19:00 and complete the cycle by slowly returning to its low consumption at late night. On the other panel the typical curve for type C2 is almost a mirror of C1: the curve has its peak right after midnight and is constantly decreasing until the bottom of power consumption at 9:00, time where the cheaper tariffs cease. Later there is a local peak also around 19:00, yet bigger than C1 but still considerably smaller than the early morning peak. 
+
+% describe mean curves
+Since both customer types are domestic, we can suppose some behaviors to justify their typical curves. For example, unrestricted customers seems to have a traditional habit of getting up in the morning and use electrical appliances such as electrodomestics, microwave and hairdryer. The work period is where there are many possibilities: people may get out of their houses to go to work but still leave children or domestic employees or even stay at home office. At night the appliances might be turned on again together with others that were not used in the morning, like TV, computers or different electrodomestics. In contrast, the C2 typical habit might be similar from 9:00 onward but it seems that appliances with higher electrical consumption are turned on at late night. 
+
+It is interesting to note that the band formed by the confidence interval is larger in C2. This is because C1 have majority of market share, mainly with more than 90\%, while C2 have more customers only in the station S4 of Cyncoed primary, which is the aggregated curve with peak in the early morning as the typical curve of C2.
+
+% covar
+The covariance parameters of the homogeneous model are displayed in Table~\ref{tab:gavin-pars1}. The dispersion parameter for C2 is considerably greater than C1, as expected after their larger confidence bands in Figure~\ref{fig:gavin-mc1}. The small decay parameter of C1 indicates that their consumption  dependence decays faster than C2, which means that considering the same time window, consumption in C2 have stronger relation with values in their neighborhood than C1. Further, the confidence intervals reveals that there is no evidence in favor of homogeneous uniform model, since their values are statistically different between types.
+
+
+\begin{table}[b]\centering
+\caption{Covariance parameters estimates of the homogeneous aggregated model.}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\begin{tabular}{llrrr}
+\toprule
+Parameter & Type & Value & CI Lwr & CI Upr\\
+\midrule
+ & C1 & 0.6608 & 0.6452 & 0.6764\\
+
+\multirow{-2}{*}{\raggedright\arraybackslash $\sigma_c$} & C2 & 5.6094 & 5.4494 & 5.7693\\
+\cmidrule{1-5}
+ & C1 & 0.0404 & 0.0384 & 0.0425\\
+
+\multirow{-2}{*}{\raggedright\arraybackslash $\omega_c$} & C2 & 0.8205 & 0.7721 & 0.8689\\
+\bottomrule
+\end{tabular}
+
+
+\end{knitrout}
+\label{tab:gavin-pars1}
+\end{table}
+
+% fitted
+To check if the model is suitable to the available data we plot the fitted aggregated curve into the observed data in Figure~\ref{fig:gavin-fitted1}. Apparently the homogeneous model was capable of capturing the main features of data, but fail to be the mean curve for some stations, as in S4 and S12. Both stations are exactly the ones that do not follow the same shape pattern of others. In S4 it seems that the fitted curves were overestimated, while in S12 we had underestimated curves. Other discrepancies are visible in other stations in small scale but in general they follow the main curve features.
+
+The results for stations S4 and S12 suggest that if there is a vertical shift of the fitted curves it may be better adjusted to their mean. Thus it might be interesting to add dummy variables indicating these two stations in the full model approach. 
+
+
+
+\begin{figure}[t!]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/fig_gavin_fitted1-1} 
+
+\end{knitrout}
+  \caption{Homogeneous aggregated model fitted values in magenta over observed load profile data.}
+  \label{fig:gavin-fitted1}
+\end{figure}
+
+
+% residuals
+Still in model diagnosis, Figure~\ref{fig:gavin-res1} shows the residual curves for each station together with a reference line at zero and their median depth in green. Observe that in stations S4 and S12 is clear the under and overestimation, respectively, while other stations are closer to zero, but still not sufficiently close. Ideally, the median depth of residual curves should be around zero, but what we observe is curves systematically positioned above or below the reference line. Furthermore, the homogeneous dispersion hypothesis is clearly not true in the figure, as the residual curves are not close to a homogeneously and randomly curve around zero, but a segment with great dispersion in the center and supposedly homogeneous at early morning. This is another evidence in favor of complete model with variance functionals. 
+
+
+
+\begin{figure}[t]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/fig_gavin_res1-1} 
+
+\end{knitrout}
+  \caption{Homogeneous aggregated model residual curves, with median depth curve in green and zero reference line in magenta.}
+  \label{fig:gavin-res1}
+\end{figure}
+
+
+% aprendizados, motivação para o modelo completo
+Thus the aggregated homogeneous model gives important insights to proceed with a more sophisticated aggregated model. The bias in fitted values for stations S4 and S12 suggest explanatory indicator variables to input in the full model. Additionally, the temperature might be incorporated as well to analyze its impact on the typical curves and hopefully get better results on  fitted values. 
+
+
+
+
+
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %  ______     _ _   __  __           _      _ 
+ % |  ____|   | | | |  \/  |         | |    | |
+ % | |__ _   _| | | | \  / | ___   __| | ___| |
+ % |  __| | | | | | | |\/| |/ _ \ / _` |/ _ \ |
+ % | |  | |_| | | | | |  | | (_) | (_| |  __/ |
+ % |_|   \__,_|_|_| |_|  |_|\___/ \__,_|\___|_|
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                             
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                             
+
+
+
+\section{Full model}
+\label{sec:gavin-fm}
+
+
+
+% Describe
+The full aggregated model allows to incorporate a second functional component to  interact with the typical curves for each subject. Furthermore, explanatory variables can be added as well to explain the aggregated data.
+
+% Config
+In this section we will present the full model approach using again 24 cubic B-Splines basis functions to expand the mean curves and 6 cubic B-Splines basis functions to expand the temperature functional component. Since we already used B-Splines interpolation to get temperature data, it is reasonable to use a minor number of basis. Also, we added two explanatory variables as indicators of stations S4 and S12 as advanced in Section~\ref{sec:gavin-homog}.
+
+A complete covariance structure will be considered to model the mean curves variability along time. As observed in Section~\ref{sec:gavin-homog}, there is a considerably bigger dispersion during typical work time than at night, specially at early morning.
+
+% Expected results
+We expect to see estimated mean curves close to the obtained with the simple homogeneous model in ranges where temperature is more frequent in data. The explanatory variables might be useful as well since it was evident in Figure~\ref{fig:gavin-fitted1} that a vertical shift could be enough to improve the fitted values.
+
+
+\subsection{Temperatures}
+\label{sec:temp}
+
+\begin{figure}[t]\centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_temp_plot-1} 
+
+\end{knitrout}
+\caption{Air temperature measurements in each primary location.}
+\label{fig:temp-prim}
+\end{figure}
+
+% remember simu, surface good only where there is information (duh)
+In Section~\ref{sec:simu-fm} the mean curves at temperatures rarely observed had more dispersed estimates besides their well positioned median depth next to the real curve. Thus when fitting a full aggregated model it is important to comprehend the temperature, or any additional functional component, to establish where it is more secure to make inferences. It is expected that the resulting surface have proper performance on ranges of temperature more frequent in data and dubious in the opposite.
+
+
+
+\begin{table}[b]
+  \centering
+\caption{Air temperature summary statistics for each station primary.}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\begin{tabular}{lrrrrr}
+\toprule
+Primary & Min & Q1 & Median & Q3 & Max\\
+\midrule
+Cyncoed & -3.24 & 0.95 & 2.54 & 4.53 & 9.58\\
+Llantarnam Primary & -4.22 & 0.89 & 3.30 & 7.90 & 12.06\\
+Ringland Newport & -4.35 & 0.49 & 2.57 & 5.37 & 12.29\\
+Trowbridge Primary & -5.41 & -0.78 & 1.26 & 3.29 & 9.44\\
+Usk & -6.27 & 1.00 & 5.74 & 8.07 & 12.22\\
+\bottomrule
+\end{tabular}
+
+
+\end{knitrout}
+\label{tab:gavin-temp-tab}
+\end{table}
+
+% show temperatures (remember interpolation)
+Temperatures were extracted for each primary at every three hours, interpolated by cubic B-Splines and displayed in Figure~\ref{fig:temp-prim}. Remember from Figure~\ref{fig:map} that Cyncoed and Trowbridge are located in Cardiff, a metropolitan area, Usk is the farthest at north and Llantarnam and Ringland between them. Most days follow the conventional cycle of warmer periods during sunlight with some days where there is not much temperature variation.
+
+A complete summary is available in Table~\ref{tab:gavin-temp-tab} with the main temperature quantiles for each primary. Curiously, Usk is the primary with greater median temperature but also the lower minimum at an afternoon in later January. Except for Trowbridge, temperature data is centralized approximately between 1\textdegree C and 4 \textdegree C. It may not be a wide temperature range but we must consider the data that is available, the primaries geographic location and dates observed. 
+
+
+% Which range should be used?
+  The model will use the entire temperature information to fit the mean curves. However, it is recommended to have caution on mean curves at extreme temperatures. After some observation on fitted values we suggest analyzing temperatures between the range 1.21\textdegree C and 5.89\textdegree C. Mean curves outside this interval may have anomalous estimates.
+
+
+\subsection{Model fit}
+\label{sec:gavin-fmfit}
+
+%% MEAN CURVES
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+    \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_mc_fm-1} 
+
+\end{knitrout}
+    \caption{Estimated mean curves for temperatures from 1.21\textdegree C to 5.89\textdegree C.}
+    \label{fig:gavin-fm-mc}    
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_mc_ic-1} 
+
+\end{knitrout}
+    \label{fig:gavin-fm-ic}
+    \caption{Mean curve estimates with 95\% CI at median temperature (2.71\textdegree C)}
+  \end{subfigure}
+  \caption{Mean surface estimates with (a) mean curves for different values of air temperature and (b) a snippet for median temperature with confidence interval.}
+  \end{figure}
+
+% expectations and usando info anterior, figura tal mostra isso
+In the full aggregated model we expect that the estimated mean curves together with the temperature functional component still follow the same contour as the simple aggregated model in Section~\ref{sec:gavin-homog}. The tensorial product estimator was composed by 24 cubic B-Splines basis functions to expand mean curves and 6 cubic B-Splines basis functions to expand the temperature.
+
+The mean curves corresponding to different temperatures are displayed in Figure~\ref{fig:gavin-fm-mc}. As aforementioned, the presented curves are limited to temperatures between 1.21\textdegree C and 5.89\textdegree C. 
+
+% extreme temp have negative curves and is inviable to restrict positiveness
+The typical curves have similar characteristics as the estimated by the simple aggregated model in Figure~\ref{fig:gavin-mc1}. Unrestricted domestic customers for type C1 have a robust behavior for different temperatures, even for values outside the presented range. On the other panel, customers of type C2 are subject to great variation of energy consumption between 12:00 and 20:00 related to air temperature. In this case, extreme temperatures must be taken with caution because for values outside the selected range mean curves may even assume negative values.
+
+% why this happens? I have some clues, but no sure
+It is important to note that type C2 have considerably less subjects than C1, which have robust mean curves for different temperatures. This unbalanced market share might be one of the causes of type C2 anomalies for extreme values of observed temperatures. Another solution could be restrict the tensorial basis expansion parameters to be positives, but it is unpractical for two reasons: it is not possible to use least squares and consequently loose its good mathematical properties and a substantial amount of parameters to be estimated via restricted numerical method. In this case, the two types of customers and the tensorial product result in 288 expansion parameters. Thus we prefer to maintain the least square approach but used with caution.
+
+% expl var parameters and decay
+\begin{table}[b]\centering
+\caption{Explanatory variables and covariance parameters estimates for full aggreagated model.}
+\label{tab:gavin-pars-fm}  
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\begin{tabular}{llrrr}
+\toprule
+Parameter & Type & Value & CI Lwr & CI Upr\\
+\midrule
+Usk &  & 37.3968 & 33.5605 & 41.2331\\
+\cmidrule{1-5}
+S4 &  & -8.1977 & -19.9304 & 3.5350\\
+\cmidrule{1-5}
+ & C1 & 0.0333 & 0.0313 & 0.0353\\
+
+\multirow{-2}{*}{\raggedright\arraybackslash $\omega_c$} & C2 & 0.6127 & 0.5803 & 0.6450\\
+\bottomrule
+\end{tabular}
+
+
+\end{knitrout}
+
+\end{table}
+
+Estimated values for explanatory variables and decay parameters are displayed in Table~\ref{tab:gavin-pars-fm}. The first two lines represent the estimated coefficient of indicator variables for stations S4 and S12. The estimated effect of station S12 shift is 34.86, which is a considerable value since the aggregated observations in this location is mainly around 50kW and 120kW. In the sequence, station S4 indicator variable have an estimated effect of -9.82 but its 95\% confidence interval reveals the uncertainty about its statistical significance and consequently  it may have no influence to improve fitted values performance.
+
+The decay parameters are similar to the observed in Table~\ref{tab:gavin-pars1}: the influence of values in the neighborhood is stronger in type C2, with parameter estimated in 0.61 over 0.03 for type C1. The estimates and its confidence intervals not overlapping their respective in Table~\ref{tab:gavin-pars1} is an evidence  of influence of temperature and explanatory variables even on covariance parameters. In particular, these decay parameters are also responsible to explain the dependence of temperatures at different times and are expected to be different from their correspondents in the homogeneous aggregated model.
+
+% variance functional
+%%% VarFunc
+\begin{figure}[t]\centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_varfunc_plot-1} 
+
+\end{knitrout}
+\caption{Estimated variance functionals.}
+\label{fig:gavin-varfunc}
+\end{figure}
+
+
+Maybe the main feature of the complete covariance structure, the estimated variance functionals for types C1 and C2 are displayed in Figure~\ref{fig:gavin-varfunc}. The first panel reveals an expected low dispersion until 4:00 where it transitions rapidly to approximately 0.7 at 12:00, the middle of the typical work period and also the range with more variability in the observed aggregated data. After 20:00 the curve regain direction toward zero, ending in approximately 0.3 and closing the functional cycle.% Remember from \myeqref{eq:eta} that the variance functional may assume negative values, which is the only possible way to achive inversely proportional covariances.
+
+%This estimated functional for type C1 elucidates two main topics: the energy consumption in early mornings have negative correlation with the remain periods and the great variability during work period until around 20:00 is confirmed as the range with bigger values. The first topic is interesting because, for example, if a residence have more electrical activity at early morning, it may have less activity during day. This hypothesis is feasible in the sense that people consuming electricity at late night might be still sleeping in the morning and consequently consuming less energy. The other intriguing fact is because it occurs in the customer type that does not have benefit of consuming electrical energy at night as the customers of type C2 with ``Economy 7'' tariffs. 
+
+The estimated variance functional for type C1 have the expected low variability at early morning and after 20:00, shown in Figure~\ref{fig:gavin1} as the periods with narrower dispersion bands. This information, exclusively in complete covariance structure, would be summarized into a homogeneous parameters and could not provide the extensive comprehension of variability through time domain. Table~\ref{tab:gavin-pars-fm} elucidates this shrinkage with estimated parameter of 0.66 for type C1, relatively close to the observed mean value of variance functional: 0.56.
+
+On the other hand, the variance functional for type C2 have similarities during work periods but different peaks and bottoms. Interestingly, the periods of less variability occurs next to the two main peak in its respective mean curve: around 3:00 and 22:00. On the other hand, peaks of variability happens during work period, as expected, but also at midnight. An hypothesis is that the residences with night tariffs benefits tend to use more electrical consuming appliances after 19:00 but a residence in a metropolitan area as Cyncoed might have different types of utensils as a residence in Usk, for example.
+
+The variance functionals also plays an important role of assigning uncertainty to mean curves estimates. In Figure~\ref{fig:gavin-fm-ic} the mean curves at general median temperature (2.71\textdegree C) are evolved by a 95\% confidence band which is broader in where functionals have their biggest absolute values, such as the typical work period.
+
+% fitted values
+
+%% FITTED
+\begin{figure}[t]\centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_fitted_fm-1} 
+
+\end{knitrout}
+\caption{Full aggregated model fitted values over observed load profile data.}
+\label{fig:gavin-fitted2}
+\end{figure}
+
+
+In the sequence, the full aggregated model demonstrates an interesting adjust of its fitted values on the observed aggregated data in Figure~\ref{fig:gavin-fitted2}. The problem with over and underestimation in stations S4 and S12 were resolved with the respective dummy variables. The temperature could capture a portion of data variability but  still is not enough to explain the work periods, which may be associated to factors beyond weather measurements. 
+
+% residuals
+%% RESIDUALS
+\begin{figure}[t]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_fm_res-1} 
+
+\end{knitrout}
+  \caption{Full aggregated model residual curves, with median depth in green and zero reference line in magenta.}
+  \label{fig:gavin-res2}
+\end{figure}
+
+
+Finally, the residual curves in Figure~\ref{fig:gavin-res2} corroborate to the positive effect of the presence of explanatory variables in S4 and S12, where their median depths are closer to the zero reference line. Further, the variance functionals captures the observed great volume of variation in the work period, where they present their biggest absolute values. 
+
+% comparison com anterior
+The full aggregated model provided exceptional insights on temperature effects, explanatory variable incorporation and covariance structure. Its resourceful amount of information proved useful to comprehend the limits of weather measurements on aggregated load profiling data but also an elucidating visualization of how a complete understanding of variable may influence on mean curves estimates in the form of their flexible confidence bands. It may be an extensive computational onus, but the gain of model information surely pays itself.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %   _____ _           _            _             
+ %  / ____| |         | |          (_)            
+ % | |    | |_   _ ___| |_ ___ _ __ _ _ __   __ _ 
+ % | |    | | | | / __| __/ _ \ '__| | '_ \ / _` |
+ % | |____| | |_| \__ \ ||  __/ |  | | | | | (_| |
+ %  \_____|_|\__,_|___/\__\___|_|  |_|_| |_|\__, |
+ %                                           __/ |
+ %                                          |___/ 
+ %
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Clustering analysis}
+\label{sec:gavin-cluster}
+
+
+% descr model-based cluster
+The model-based clustering analysis for aggregated data will group stations according to their similar separated mean curves for unrestricted and ``Economy 7'' domestic customers. The model supposes that the aggregated observed data is a mixture of $B$ aggregated models with distinct mean curves, with $B$ as the number of total clusters.
+
+% config: covar, correlation
+In this section we will fit this mixture of aggregated models to obtain the best station clustering to explain observed data variation. Since the focus is toward resulting cluster configuration, we selected the homogeneous covariance structure with exponential correlation, which will provide dispersion and decay estimates for each customer and each cluster without losing precision on mean curves estimation. There will be no explanatory variables or temperature component in this model.
+
+% Expected
+We expect that the different geographic location of stations may have a clustering effect to explain aggregated data variability, but not necessarily group by primaries. Stations such as S4 in Cyncoed and S12 in Usk might be interesting candidates since their shape do not follow the typical observed in other stations.
+
+
+\subsection{Two clusters}
+\label{sec:gavin-2cl}
+
+
+
+
+
+% descr: model config (min) and fast computation
+The model with two clusters is the minimum configuration for grouping analysis. It may be useful to a first exploration and has fast computational performance, since the number of parameters to be estimated via numerical optimization is $B \times C \times P$, with $B$ the number of clusters, $C$ the number of subject types and $P$ the number of parameters relative to the covariance structure. In this case, we have 8 parameters to be estimated.
+
+
+%% MEAN CURVES
+
+\begin{figure}[t]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_mc_cl2-1} 
+
+\end{knitrout}
+  \caption{Estimated mean curves for types C1 and C2 separated in two clusters}
+  \label{fig:gavin-cl2-mc}
+\end{figure}
+
+The separated mean curves for each cluster are displayed in Figure~\ref{fig:gavin-cl2-mc}. In the first panel we see clusters characterized mainly by their load profiling on work period from 9:00 to 17:00, with higher energy consumption for cluster 1. The early morning period have also clear distinction between clusters but now with  lower consumption for customers in cluster 1. At night, both clusters seem to have similar characteristics with coincident peaks and overlapping curves.
+
+On the other hand, ``Economy 7'' domestic customers have largely distinct typical curves between clusters. The cluster 2 curve is similar to the obtained in Sections \ref{sec:gavin-homog} and \ref{sec:gavin-fm}, with explicit peak between 1:00 and 2:00 which decays to a smaller baseline after 9:00. However, cluster 1 reveals a new characteristic for C2 customers. After midnight, their curve have a peak about 1.5 times greater than cluster 2, decays in early morning but have a local peak right before 9:00, which could be people waking up and getting prepared for work. During the typical working period we have the smallest consumption baseline and hit another load peak at 18:00, maybe because of people arriving their homes and remaining relatively high until 21:00.
+
+This clear distinction between clusters reveals that there are customers of type C2 with energy consumption habits, after possibly arriving their residences, and customers that use the tariff benefit at nights to plug their appliances with most energy consumption after midnight, and remain the  low profiling during the rest of day. 
+
+% pi tab: clustering
+
+\begin{table}[b]
+\caption{Estimated latent variable probability parameters.}
+\centering
+%[b] PROB TAB
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\begin{tabular}{lllllllllllll}
+\toprule
+  & S1 & S2 & S3 & S4 & S5 & S6 & S7 & S8 & S9 & S10 & S11 & S12\\
+\midrule
+$\hat{\pi}_{j1}$ & \cellcolor[HTML]{FFFFFF}{0.42} & \cellcolor[HTML]{FFFFFF}{0.26} & \cellcolor[HTML]{FFFFFF}{0.2} & \cellcolor[HTML]{FFFFFF}{0} & \cellcolor[HTML]{CECECE}{1} & \cellcolor[HTML]{FFFFFF}{0} & \cellcolor[HTML]{FFFFFF}{0.13} & \cellcolor[HTML]{FFFFFF}{0.24} & \cellcolor[HTML]{FFFFFF}{0.22} & \cellcolor[HTML]{FFFFFF}{0.16} & \cellcolor[HTML]{FFFFFF}{0.2} & \cellcolor[HTML]{CECECE}{1}\\
+$\hat{\pi}_{j2}$ & \cellcolor[HTML]{CECECE}{0.58} & \cellcolor[HTML]{CECECE}{0.74} & \cellcolor[HTML]{CECECE}{0.8} & \cellcolor[HTML]{CECECE}{1} & \cellcolor[HTML]{FFFFFF}{0} & \cellcolor[HTML]{CECECE}{1} & \cellcolor[HTML]{CECECE}{0.87} & \cellcolor[HTML]{CECECE}{0.76} & \cellcolor[HTML]{CECECE}{0.78} & \cellcolor[HTML]{CECECE}{0.84} & \cellcolor[HTML]{CECECE}{0.8} & \cellcolor[HTML]{FFFFFF}{0}\\
+\bottomrule
+\end{tabular}
+
+
+\end{knitrout}
+\label{tab:gavin-cl-pi}
+\end{table}
+
+
+The estimated cluster attribution probability for each station is available in Table~\ref{tab:gavin-cl-pi}. Cluster 1 is composed by stations S5 and S12, both with estimated probability of 1, which means that theses stations have customers of type C2 with higher values of load profiling with similar peaks at 2:00 and 18:00. Remember that S12 is the station located in Usk, the farthest primary of data set, and the one together with S4 with  different pattern compared to remaining stations. However, S4 do not belongs to the same cluster as S12 but its primary partner S5. The market distribution in Table~\ref{tab:gavin-mkt} shows that this station in Cyncoed have 96.89\% of C1 market share, which means that the C2 typical curves may have low impact on the aggregated load profile.
+
+%% FITTED
+\begin{figure}[t]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_fitted_cl2-1} 
+
+\end{knitrout}
+  \caption{Clustering aggregated model fitted values in magenta over observed load profile data.}
+  \label{fig:gavin-cl2-fitted}
+\end{figure}
+
+The fitted values plotted over observed  aggregated load data in Figure~\ref{fig:gavin-cl2-fitted} show that the mixture model is capable to explain  most data variability. The impact of clusterization is visible on station S12, where its distinct curves for type C2 customers is sufficient to explain load variability without a dummy explanatory variable to shift estimated fitted values. In station S5 this impact is not so evident since C2 have only 3.11\% of market share but it is interesting that two stations in the same primary belong to different clusters.
+
+
+%% REs
+\begin{figure}[t]
+  \centering
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\includegraphics[width=.8\linewidth]{figure/gavin_cl2_res-1} 
+
+\end{knitrout}
+  \caption{Clustering aggregated model residual curves with median depth in green and zero reference line in magenta.}
+  \label{fig:gavin-cl2-res}
+\end{figure}
+
+
+The residual curves in Figure~\ref{fig:gavin-cl2-res} are mostly concentrated around the zero line as shown by their median depth curve. This time station C4 had an overestimation at early morning but overestimation at nights, which was not observed in Sections \ref{sec:gavin-homog} and \ref{sec:gavin-fm}.
+
+ 
+
+
+%% COV PARS
+\begin{table}[b]\centering
+\caption{Estimated covariance parameters for clustering aggregated model.}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}
+\begin{tabular}{lllrrr}
+\toprule
+Cluster & Parameter & Type & Value & CI Lwr & CI Upr\\
+\midrule
+ &  & C1 & 1.5379 & 1.4924 & 1.5834\\
+
+ & \multirow{-2}{*}{\raggedright\arraybackslash $\sigma_c$} & C2 & 1.5609 & 1.5009 & 1.6208\\
+\cmidrule{2-6}
+ &  & C1 & 0.2111 & 0.1978 & 0.2245\\
+
+\multirow{-4}{*}{\raggedright\arraybackslash Cluster 1} & \multirow{-2}{*}{\raggedright\arraybackslash $\omega_c$} & C2 & 0.0254 & 0.0229 & 0.0278\\
+\cmidrule{1-6}
+ &  & C1 & 0.5548 & 0.5463 & 0.5632\\
+
+ & \multirow{-2}{*}{\raggedright\arraybackslash $\sigma_c$} & C2 & 4.2539 & 4.1161 & 4.3918\\
+\cmidrule{2-6}
+ &  & C1 & 0.0298 & 0.0288 & 0.0309\\
+
+\multirow{-4}{*}{\raggedright\arraybackslash Cluster 2} & \multirow{-2}{*}{\raggedright\arraybackslash $\omega_c$} & C2 & 0.9682 & 0.9054 & 1.0309\\
+\bottomrule
+\end{tabular}
+
+
+\end{knitrout}
+\label{tab:gavin-pars-cl2}
+\end{table}
+
+% cov pars
+Finally, the covariance parameters estimates for both clusters are displayed in  Table~\ref{tab:gavin-pars-cl2}. Comparing with the homogeneous model of Section~\ref{sec:gavin-homog}, estimates of cluster 2 are closer to the presented in Table~\ref{tab:gavin-pars1}, since it is the most frequent cluster containing 10 of the 12 stations. In cluster 1 we have apparently more dispersion, which is visible in its broader confidence bands in Figure~\ref{fig:gavin-cl2-mc}.
+
+
+% conclude: if u want temp and expl. vars, separate clusters and add
+In summary, the mixture model provided satisfactory fitted values in Figure~\ref{fig:gavin-cl2-fitted} and reasonable separated mean curves for each cluster. With no explanatory variables or additional temperature component it was possible to explain most variability of load profiles. If there is an interest to add these features, the user can manually separate data and fit a full model for each cluster.
+
+
+
+\subsection{More than two clusters}
+
+Clustering analysis of load profile data for two, three and four cluster did not converge to global maxima and presented anomalous negative mean curve estimates. 
+

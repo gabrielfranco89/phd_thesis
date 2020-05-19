@@ -1,0 +1,1922 @@
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+echo=FALSE,  warning=FALSE,  message=FALSE,  cache=TRUE,  fig.height=4,  fig.width=6,  out.width='.8\\linewidth'
+)
+@
+
+
+\chapter{Simulation studies}
+
+\section{Overview}
+\label{sec:overview}
+
+The simulation experiments will test the aggregated model robustness to covariance structure mispecification and the performance of full model and clustering algorithm in simulated data.
+
+Section~\ref{sec:mpc} takes two data sets with common typical curves but different covariance structure to assess separation performance and covariance estimates behavior in an over or undersophisticated structure. Sections~\ref{sec:simu-fm} and \ref{sec:simu-cluster} study respectively the full aggregated model and the proposed clustering analysis.
+
+
+\section{Covariance structure mispecification}
+\label{sec:mpc}
+
+The model covariance matrix describes the relationship between two points of the observed functional response variable. Although it does not influence the expected value of the separated curves least square estimator, covariance matrix is important to build its confidence intervals and posterior inference.
+
+We built an experiment to observe the impact of covariance structure mispecification on the model parameters. 
+
+\subsection{The experiment}
+\label{sec:simu-exp1}
+
+This experiments will create two sets of aggregated simulated data, each having homogeneous uniform and complete covariance structure. On both we fit the three available models for variance functionals in Section~\ref{sec:varfunc} and then observe parameter estimation under covariance structure mispecification.
+
+% \begin{enumerate}
+% \item Simulate an homogeneous uniform or complete aggregated data model.
+% \item On the simulated data, fit the three aggregated data model cases:
+%   \begin{itemize}
+%   \item Homogeneous Uniform,
+%   \item Homogeneous,
+%   \item Complete.
+%   \end{itemize}
+% \item Check parameters estimation for the correct model and the two mispecified fits.
+% \end{enumerate}
+
+To simplify the experiment, we use the exponential correlation functional described in Section~\ref{sec:corfunc} for all cases and varying its parameters as required. The additional functional component in the surface model and covariates will not be used.%, since the focus is on covariance and it is well known that the separated curves are .
+
+At each experiment run $(r)$ the mean curves and covariance parameters will be kept fixed. We allow distinct markets for each run by sampling its values in a range from 5 to 20 with replacement for each type of subject and each group. 
+
+The number of total runs is $R=30$, with number of groups fixed at $J=10$ and model replicate tested at values $I=5$ and $I=30$. The number of groups is kept fixed since its influence is better perceived on mean curves estimation \cite{dias2009non,dias2013hierarchical}.
+
+We can summary the experiment in the following scheme:
+
+\begin{enumerate}
+\item At run $(r)$, get fixed mean curves and covariance parameters and randomize market to build the aggregated model simulated data with $J=10$ groups and model replicates $I=5$ or $I=30$.
+\item Fit the aggregated data model and obtain covariance parameters estimates.
+\item Repeat until $r=30$.
+\end{enumerate}
+
+
+<<figs_simu>>=
+library(aggrmodel)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(latex2exp)
+
+mc_plot = simulatedMeanCurves %>%
+    mutate(Time = Time/24,
+           Type = paste("Type",rep(1:3,each=48))) %>%
+    ggplot(aes(Time,Cluster2)) +
+    geom_line() +
+    facet_grid(.~Type) +
+    guides(guide = guide_axis(n.dodge = 2)) +
+#    guides(x = guide_axis(angle = 90)) +
+    ylab(TeX("$\\alpha_c(t)$")) +
+    xlab(TeX("$t$"))
+basis_mtx <- splines::bs(seq(0,1,length.out=48),df = 6,
+                         intercept = TRUE)
+beta_cov <- c(0.660005891928449,0.2770133940503,0.608935503521934,
+              0.859756508376449,0.608338284306228,0.744059770135209,
+              0.643090288387612,0.236336073838174,0.217497098725289,
+              0.221734343795106,0.0359028314705938,0.696014136075974,
+              0.98273342824541,0.780097630107775,0.361326338956133,
+              0.882140269037336,0.0816405781079084,0.828367569483817)
+beta_nu2 <- matrix(beta_cov, ncol=3)
+nu2 <- basis_mtx %*% beta_nu2
+eta_plot = data.frame(time = rep(seq(0,1,length.out=48),times=3),
+           type = paste("Type",rep(1:3,each=48)),
+           nu = c(nu2)) %>%
+    ggplot(aes(time,nu)) +
+    geom_line() +
+    facet_grid(.~type) +
+    guides(x = guide_axis(angle = 90))+
+    ylab(TeX("$\\eta_c(t)$")) +
+    xlab(TeX("$t$"))
+@ 
+
+
+\subsection{The simulated homogeneous uniform data}
+\label{sec:hu-fit}
+
+%% TODO:
+% - Description of HU model
+% - Fixed parameters
+% - Expected results
+
+The homogeneous uniform (HU) aggregated model have homogeneous variability along time and fixed correlation decay parameter. The model supposes that subject types have the same parameters and consequently the smallest set of covariance parameters of all structure.
+
+For this experiment we use $\sigma_c = 0.6$ and $\omega_c = .5$ for all subjects of type $c = 1,2,3$. The variation uniformity is seem in Figure~\ref{fig:hu-data}, where we can observe an homogeneous dispersion along time axis. In Figure~\ref{fig:hu-mc} we have the fixed mean curves for this experiment and through other occasions in this thesis. The shape for each type was selected after random combinations of B-Splines basis functions and chosen according to their different forms.
+
+Since it is the most simple covariance  structure we expect to have satisfying fits on all three aggregated models. In homogeneous model we hope that it estimates parameters around the  real value and have no discrepancies between subject types. On the other hand, in complete model we look for covariance functionals oscillating around the value of $\sigma = 0.6$ and decay parameters estimated as in homogeneous model fit.
+
+
+<<ex2hu, cache=FALSE>>=
+hu2hu <- readRDS("data/ex_hu2hu.rds")
+comp2hu <- readRDS("data/ex_comp2hu.rds")
+@
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<ex2huFigHU, fig.height=2, fig.width=5>>=
+    <<ex2hu>>
+    library(dplyr)
+    hu2hu$df %>%
+        ggplot(aes(time,obs,group=rep)) +
+        geom_line(alpha=.33) +
+        facet_wrap(.~group) +
+        ylab(TeX("$y_{ij}(t)$")) + xlab(TeX("$t$")) +
+        guides(x = guide_axis(angle = 90))#        guides(guide = guide_axis(n.dodge = 2))#x = guide_axis(angle = 90))
+    @
+  \caption{Homogeneous Uniform data example with 30 replicates.}
+  \label{fig:hu-data}
+\end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fig_mc_hu, fig.height=2, fig.width=5>>=
+    mc_plot + xlab("Time") +
+        guides(x = guide_axis(angle = 90))
+    @
+    \caption{Mean curves used in the experiment.}
+    \label{fig:hu-mc}
+  \end{subfigure}
+\caption{Homogeneous uniform experiment configuration: (a) example of simulated aggregated data with 30 replicates for 3 groups and (b) the real mean curves.}
+\end{figure}
+
+
+% \newpage
+\subsubsection{Homogeneous uniform fit}
+\label{sec:mpc2hu}
+
+%% TODO
+% [x] Simplest model, easy to fi t: only two parameters. Speed
+% [x] Expectations: nice curve fit for both, poor cov estimation on 5 reps
+% [x] Mean curves: nice fit for both
+% [x] Covariance parameters: biased, but tend to real value
+%   [x] Why biased?
+%   [x] On numbers is not so bad
+
+The homogeneous uniform aggregated model is the simplest case and the easiest to fit. As the mean curve is obtained via least squares, the algorithm must estimate only two covariance parameters via numerical optimization. The simplicity results in fast computation, spending a few seconds even on domestic machines.
+
+Since we are on the correct case, we expect to see estimated parameters close to their values, specially on the 30 replicates cases. In addition, the mean curves must be well located around the real value on both data sets since it is an unbiased least squares estimator \cite{shi2011gaussian}.
+
+<<hu2huPreamble, cache=FALSE, message=FALSE>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/mpc_results.R")
+# hu2hu30 <- mpc_2uniform(simu_struct="uniform",
+#                         n_rep=30)
+# hu2hu5 <- mpc_2uniform(simu_struct="uniform",
+#                        n_rep=5)
+# saveRDS(hu2hu30,"data/hu2hu30.rds")
+# saveRDS(hu2hu5,"data/hu2hu5.rds")
+hu2hu30 <- readRDS("data/hu2hu30")
+hu2hu5 <- readRDS("data/hu2hu5")
+@ 
+
+In fact, Figure~\ref{fig:mpchu2hu} presents mean curves estimates for both simulated data sets. The estimated curves represented by the gray lines are located around the real value in blue and resulting in a median depth curve in blue also very close to the reality. Of course, it is expected that data with few replicates have more dispersion on estimates when compared with data with more information, but even so the mean curves are very satisfying on 5 replicates case.
+
+
+\begin{figure}[!t]
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fighu2hu5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    <<hu2huPreamble>>
+    hu2hu5$plot_mc+
+        theme(legend.position="none")+
+        xlab("Time") +
+        guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 5 replicates}
+  \end{subfigure}
+    \begin{subfigure}{\textwidth}
+      \centering
+    <<fighu2hu30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    <<hu2huPreamble>>
+    hu2hu30$plot_mc+
+        theme(legend.position="none")+
+        xlab("Time")+
+        guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 30 replicates}
+  \end{subfigure}
+  \caption[Mean curve estimation using homogeneous uniform model for homogeneous uniform simulated data]{Estimated mean curves using homogeneous uniform model for homogeneous uniform simulated data with (a) 5 replicates and (b) 30 replicates. The magenta line is the median depth and the blue line is the real curve.}
+  \label{fig:mpchu2hu}
+\end{figure}
+
+The covariance parameters do not have a closed form estimator and are estimated by numerical optimization to achieve maximum likelihood. Figure~\ref{fig:cpest-hu2hu} shows the violin plot for the parameters estimates. The dashed line represents the real value and notice that estimates are concentrated slightly below them, with the 5 replicates experiment are farther than the 30 replicates data sets.
+
+
+
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<covparhu2hu, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    <<hu2huPreamble>>
+    cp <- do.call(rbind,
+                  lapply(list(hu2hu5,hu2hu30),
+                         function(x) x$cov_par
+                         )
+                  )
+    cp$Replicate = rep(c("5 reps","30 reps"), each=30)
+    
+    cp %>%
+        ## mutate(omega = ifelse(Replicate=="5 reps",
+        ##                       omega*5*10/(5*10-3),
+        ##                       omega*30*10/(30*10-3)),
+        ##        sigma = ifelse(Replicate=="5 reps",
+        ##                       sigma*5*10/(5*10-3),
+        ##                       sigma*30*10/(30*10-3))) %>%
+        gather(par, value, -c(run,Replicate)) %>%
+        mutate(line = rep(c(.6, .5),each=60)) %>%
+        ggplot(aes(x=Replicate,y=value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(aes(yintercept = line), alpha=.4, linetype=2)+
+        facet_wrap(.~par, scales = "free", labeller = label_parsed) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values")+xlab("")
+    @
+    \caption{Estimated covariance parameters} \label{fig:cpest-hu2hu}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<rehu2hu, fig.height=2.5, fig.width=5>>=
+    cp %>%
+        mutate(sigma = abs(1 - sigma/.6),
+               omega = abs(1 - omega/.5)) %>%
+        gather(par, value, -c(run,Replicate)) %>%
+        ggplot(aes(x=Replicate,y=100*value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        # ggplot(aes(y=100*value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(yintercept=0, alpha=.4, linetype=2)+
+        facet_wrap(.~par, scales = "fixed", labeller = labeller(par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Relative Error (in %)") + xlab("")
+    @
+    \caption{Relative errors (in \%) }\label{fig:re-hu2hu}
+  \end{subfigure}
+  \caption{Estimated covariance parameters values using homogeneous uniform model for homogeneous uniform simulated data and their relative errors.}
+  \label{fig:cp-hu2hu}
+\end{figure}
+
+We have evidence of a possible bias in the covariance estimates for the homogeneous uniform model, with maximum likelihood estimates returning systematical lower values. It is important to note that the initial values for optimization do not have major influence on estimated values. Experiments on different initial parameters for homogeneous uniform model were tested and all converged around a common value. In this particular case, the algorithm fits a linear regression model to get initial parameters for mean curves and also its residual standard error divided by the number of replicates as an initial value for $\sigma$. The initial parameter of $\omega$ is fixed in 1.
+
+
+Despite the evident bias on estimates, in Figure~\ref{fig:re-hu2hu} we have their relative absolute errors. The decay parameter $\omega$ have relative errors around 10\% on 5 replicates experiment and smaller values for 30 replicates, as expected. The estimates of dispersion parameter $\omega$ are closer to their real value when compared to $\omega$.
+
+ 
+
+\begin{table}[b]\centering
+\caption{Summary of estimated covariance parameters using homogeneous uniform model for homogeneous uniform simulated data}
+<<tab_hu2hu>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+cp %>%
+    gather(Parameter, value, -c(run,Replicate))%>%
+    mutate(re = ifelse(Parameter=="omega",
+                       abs(value-.5)/.5,
+                       abs(value-.6)/.6))%>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma")) %>%
+    group_by(Parameter,Replicate) %>%
+    summarise(Median = median(value),
+              Mean = mean(value),
+              `MRE` = mean(re),
+              `RE IQR` = IQR(re)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4,
+#          caption = "Nice table", label="par-hu2hu",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1, latex_hline = "major", valign = "middle")
+@
+\label{tab:par-hu2hu}
+\end{table}
+
+
+In Table~\ref{tab:par-hu2hu} we have summary statistics for this experiment, with their median and mean values, mean relative error (MRE) and interquartile range of relative errors (RE IQR). In numbers we observe how close estimates are from their real values despite their possible bias. In particular, the 30 replicates experiment shows estimates as close as the real values with MRE of approximately 2\% for the dispersion parameter $\sigma$ and approximately 4.1\% for the decay parameter $\omega$. %The RE IQR also shows that estimates are well concentrated
+On the other hand, the 5 replicates experiment present estimates not far from their real value, but in terms of relative error we have an MRE of approximately 10\% on $\omega$ and 5\% on $\sigma$. In this case the parameters are relative small values, but it can be a problem on greater domains of data.
+
+
+In summary, the smaller relatives errors for 30 replicates in Figure~\ref{fig:cpest-hu2hu} and the estimates location in Figure~\ref{fig:re-hu2hu} reveal a movement of their mean values toward the real value. So if it is possible to observe replicates the user gains on parameter estimation precision.
+
+
+\subsubsection{Homogeneous fit}
+\label{sec:mc2homog}
+
+
+%% TODO ========================================
+% [x] Description: hu2homog, more parameters
+% [x] Expected results: all parameters the same, robust mean curves
+% [x] Mean curves: ok fit, better w/30rep
+% [x] Cov. parameters:
+%   [x] Around real values
+%   [x] bias not sistematic apparent on 5rep
+%   [x] greater RE
+%   [] filler
+
+
+<<hu2homogPreamble, cache=FALSE, message=FALSE>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/mpc_results.R")
+# hu2homog30 <- mpc_2homog(simu_struct="uniform",
+#                         n_rep=30)
+# hu2homog5 <- mpc_2homog(simu_struct="uniform",
+#                        n_rep=5)
+# saveRDS(hu2homog30,"data/hu2homog30.rds")
+# saveRDS(hu2homog5,"data/hu2homog5.rds")
+hu2homog30 <- readRDS("data/hu2homog30")
+hu2homog5 <- readRDS("data/hu2homog5")
+@ 
+
+The homogeneous model supposes that each subject type have their own  set of dispersion and decay parameters, that is, for every type $c$, we have $\sigma_c$ and $\omega_c$. Compared to homogeneous uniform model, it has $C$ times more parameters to estimate by maximum likelihood.
+
+
+\begin{figure}[!t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fighu2homog5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    hu2homog5$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 5 replicates}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fighu2homog30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    hu2homog30$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 30 replicates}
+  \end{subfigure}
+  \caption[Mean curve estimation using homogeneous model for homogeneous uniform simulated data]{Estimated mean curves using homogeneous model for homogeneous uniform simulated data with (a) 5 replicates and (b) 30 replicates. The magenta line is the median depth and the blue line is the real curve.}
+  \label{fig:mpchu2homog}
+\end{figure}
+
+
+
+Using uniform homogeneous simulated data it is expected that parameters are estimated around the same real value for every subject type, therefore $\tilde{\sigma}_c \approx \sigma$ and $\tilde{\omega}_c \approx \omega, \, \forall c$. Besides,  the mean curves should have the same behavior as in homogeneous uniform model with estimated curves well concentrated around their real values with more expected precision in the 30 replicates experiment.
+
+Figure~\ref{fig:mpchu2homog} displays the mean curve estimates in gray around the real value in magenta, together with the computed median depth in blue. The 5 replicates experiment in (a) results in more dispersed estimates but still with median depth very close to the real value. Below, the 30 replicates experiment elucidates the gain in precision when  multiple replicates are available.
+
+
+
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<covparhu2homog, fig=TRUE, fig.width=5, fig.height=3.5>>=
+    <<hu2homogPreamble>>
+    
+    cp <- do.call(rbind,
+                  lapply(list(hu2homog5,hu2homog30),
+                         function(x) x$cov_par
+                         )
+                  )
+
+
+    cp$Replicate = rep(c("5 reps","30 reps"), each=90)
+    
+    cp %>%
+        gather(par, value, -c(run,Replicate,type)) %>%
+        mutate(line = rep(c(.6, .5),each=180)) %>%
+        ggplot(aes(x=Replicate,y=value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(aes(yintercept = line), alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "fixed",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values")+xlab("")
+    @
+    \caption{Estimated covariance parameters} \label{fig:cpest-hu2homog}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<rehu2homog, fig.height=3.5, fig.width=5>>=
+    cp %>%
+        mutate(sigma = abs(1 - sigma/.6),
+               omega = abs(1 - omega/.5)) %>%
+        gather(par, value, -c(run,Replicate,type)) %>%
+        ggplot(aes(x=Replicate,y=100*value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=100*value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(yintercept=0, alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "fixed",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Relative errors (in %)")+xlab("")
+    @
+    \caption{Relative errors (in \%) }\label{fig:re-hu2homog}
+  \end{subfigure}
+  \caption{Estimated values and their relative errors}
+  \label{fig:cp-hu2homog}
+\end{figure}  
+
+The covariance parameters estimates are displayed in Figure~\ref{fig:cp-hu2homog} with \ref{fig:cpest-hu2homog} the distribution of estimated values in violin plots and \ref{fig:re-hu2homog} their relative errors. Visually it is possible to say that estimated values are well located around their real values, with a slightly more apparent subestimation for subject of type 3 on both parameters.
+
+
+\begin{table}[b]\centering
+\caption{Summary of estimated covariance parameters using homogeneous  model for homogeneous uniform simulated data}
+<<tab_hu2homog>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+cp %>%
+    gather(Parameter, value, -c(run,Replicate,type))%>%
+    mutate(re = ifelse(Parameter=="omega",
+                       abs(value-.5)/.5,
+                       abs(value-.6)/.6))%>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma")) %>%
+    group_by(Parameter,Replicate, type) %>%
+    summarise(Median = median(value),
+              Mean = mean(value),
+              `RE Mean` = mean(re),
+              `RE IQR` = IQR(re)) %>%
+    ## summarise(Min = min(value),
+    ##           Median = median(value),
+    ##           Mean = mean(value),
+    ##           Max = max(value),
+    ##           SD = sd(value),
+    ##           IQR = IQR(value)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="par-hu2homog",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1:2, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1:2,
+                  valign = "middle")
+@ 
+\label{tab:par-hu2homog}
+\end{table}
+
+This possible bias is evident on 5 replicates experiment as we see in Table~\ref{tab:par-hu2homog}: dispersion and  decay parameters are underestimated with mean and median values considerably below their real values. However, as in the Section~\ref{sec:mpc2hu}, as we increase the number of replicates the estimated values approximate to the real value. This is visible in dispersion parameters $\sigma_c$ where we move the mean values closely to 0.60. Curiously, the type 3 continues to underestimate with a relative even with more replicates information. Aside the relative lack of precision, Table~\ref{tab:par-hu2homog} shows that decay parameters $\omega_c$ have acceptable mean values on 30 replicates experiment besides the type 3 estimate.
+
+The great values of relative errors for the decay parameter estimation reveals the difficulty to estimate it, specially with few information. As we increase the number of replicates the adjusted model obviously increase its precision but still with a considerably uncertainty bringing the mean relative error from about 30\% to 40\% on 5 replicates to an interval of 18\% and 22\% for 30 replicates. The same gain in precision is observed in dispersion parameters, and in general it has better results compared to decay parameters.
+
+This experiment shows the persistent bias of underestimation but also evidences that we may have an homogeneous uniform model, since parameter are very close between subject types. The results show that if we fit the homogeneous model in the simplest case data we have indications to suspect that maybe it is interesting to fit another  covariance structure.
+
+
+
+
+
+\subsubsection{Complete fit}
+\label{sec:hu2comp}
+
+%% TODO ========================================
+% [] Description: hu2compl, even more parameters
+% [] Expected results: robust mean curves, variance functionals around .6 and decay okay
+% [] Mean curves: ok fit even with many parameters to estimate, shows OLS robustness, better w/30rep
+% [] Cov. parameters:
+%   [] functionals around .6, show beta's statistics
+%   [] well adjusted around .5 for types 1 and 2, bias not evident
+%   [] greater RE
+
+
+<<prephu2compl>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/mpc_results.R")
+# hu2comp30 <- mpc_2complete(simu_struct="uniform",
+#                            n_rep=30)
+# hu2comp5 <- mpc_2complete(simu_struct="uniform",
+#                           n_rep=5)
+# saveRDS(hu2comp30,"data/hu2comp30.rds")
+# saveRDS(hu2comp5,"data/hu2comp5.rds")
+hu2comp30 <- readRDS("data/hu2comp30.rds")
+hu2comp5 <- readRDS("data/hu2comp5.rds")
+@ 
+
+\begin{figure}[!t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fighu2comp5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    hu2comp5$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Mean curves using 5 replicates}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fighu2comp30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    hu2comp30$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Mean curves using 30 replicates}
+  \end{subfigure}
+  \caption{Estimated mean curves using complete model for homogeneous uniform simulated data with (a) 5 replicates and (b) 30 replicates. The magenta line is the median depth and the blue line is the real curve.}
+  \label{fig:mpchu2comp}
+\end{figure}
+
+
+The complete aggregated model supposes a variance functional $\eta_c(\cdot)$ and decay parameter $\omega_c$ for every subject of type $c$. The variance functionals are expanded in basis functions and its coefficients are estimated by maximum likelihood and numeric optimization. It means that if we choose $K$ basis functions for expansion we have $C(K+1)$ covariance parameters to be obtained.
+
+The sophistication of the complete model must accomodate the nested homegenous uniform structure. We expect that mean curves are well estimated as in previous experiments, variance functionals to be concentrated around the real value $\sigma=0.6$ and decay parameters also around their real value. However, parameters estimation is expected to have more dispersion and consequently uncertainty due to the amount of covariance parameters.
+
+As expected, Figure~\ref{fig:mpchu2comp} shows that mean curves estimation have good performance on both 5 and 30 replicates experiment, with event better fit on the later. The estimated curves in gray are more spread on 5  replicates experiment but still have its median depth in magenta very close to the real value in blue.
+
+<<getBetas-cov-2comp>>=
+tb5 <- hu2comp5$func_par %>%
+    group_by(run,type) %>%
+    summarise(mean = mean(beta))
+tb30 <- hu2comp30$func_par %>%
+    group_by(run,type) %>%
+    summarise(mean = mean(beta))
+beta_cov = rbind(tb5,tb30)
+@ 
+
+
+The variance functionals $\eta_c(\cdot)$ estimates are displayed in Figure~\ref{fig:covplot2comp} as gray lines, with the real dispersion parameter represented by the horizontal reference line. Notice that there is an evident concentration of the curves around the scalar real value with slightly great spread on 5 replicates experiment. 
+
+
+
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<covplothu2comp5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    hu2comp5$plot_cov+
+        geom_hline(yintercept=.6, col="navyblue", alpha=.8, linetype=2, linesize=2)+
+        theme(legend.position="none")+
+        guides(x = guide_axis(angle = 90)) +
+        ylab(TeX("$\\eta_c(t)$")) + xlab(TeX("time $(t)$"))
+    @
+    \caption{Variance functionals estimates using 5 replicates}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<covplothu2comp30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    hu2comp30$plot_cov+
+        geom_hline(yintercept=.6, col="navyblue", alpha=.8, linetype=2, linesize=2)+
+        theme(legend.position="none")+
+        guides(x = guide_axis(angle = 90)) +
+        ylab(TeX("$\\eta_c(t)$")) + xlab(TeX("time $(t)$"))
+    @
+    \caption{Variance funcionals using 30 replicates}
+  \end{subfigure}
+  \caption{Estimated variance functionals for homogeneous uniform simulated data with (a) 5 replicates and (b) 30 replicates. The blue line is the real value.}
+  \label{fig:covplot2comp}
+\end{figure}
+
+
+In fact, the perfect scenario would give us an horizontal line in $\sigma=.6$ for every type because if all coefficients are equal in a B-Splines expansion then it results in a constant line with the same value as the coefficients. So we expect that coefficients of the variance functional expansion might be close to 0.6. 
+
+For every run and every type take the mean value of the expasion coefficients and as with the dispersion parameter on previous sections we display its statistics in Table~\ref{tab:par-hu2comp}. In the 5 replicates experiment the coefficients are also underestimated, which is visible in Figure~\ref{fig:covplot2comp} with curves apparently lower than the upper panel, where the coefficients average approximates to 0.6 in the 30 replicates experiment. These facts are visible on the upper panels of Figure~\ref{fig:cpest-hu2comp}with the underestimation represented by the median line of the violin plot.
+%In addition, in Figure~\ref{fig:cpest-hu2comp} we have the distribution of the the expansion coefficients mean for every type at each run and notice the visible underestimation on 5 replicates experiments, with 
+
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<covparhu2comp, fig=TRUE, fig.width=5, fig.height=3.5>>=
+    cp <- do.call(rbind,
+                  lapply(list(hu2comp5,hu2comp30),
+                         function(x) x$cov_par
+                         )
+                  )
+    cp$beta = beta_cov$mean
+    cp$Replicate = rep(c("5 reps","30 reps"), each=90)
+    
+    
+    cp %>%
+        gather(par, value, -c(run,Replicate,type)) %>%
+        mutate(line = rep(c(.5,.6),each=180)) %>%
+        ggplot(aes(x=Replicate,y=value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(aes(yintercept = line), alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "free_y",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values")+xlab("")
+    @
+    \caption{Estimated values} \label{fig:cpest-hu2comp}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<rehu2comp, fig.height=3.5, fig.width=5>>=
+    cp %>%
+        mutate(omega = abs(1 - omega/.5),
+               beta = abs(1 - beta/.6)) %>%
+        gather(par, value, -c(run,Replicate,type)) %>%
+        ggplot(aes(x=Replicate,y=100*value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=100*value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(yintercept=0, alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "fixed",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Relative Error (in %)")+xlab("")
+    @
+    \caption{Relative errors (in \%) }\label{fig:re-hu2comp}
+  \end{subfigure}
+  \caption{Estimated values and their relative errors}
+  \label{fig:cp-hu2comp}
+\end{figure}  
+
+% decay
+Still in Figure~\ref{fig:cp-hu2comp} we have the distribution of estimated decay parameters. For types 1 and 2 the estimates are well centered in the real value $\omega=0.5$, while the type 3 estimates for the 30 replicates experiments are underestimated. However, their relative errors surpass the value of 100\% on the 5 replicates experiments, with observed median around 50\%. 
+
+In Table~\ref{tab:par-hu2comp} it is possible to notice the decay parameter estimates closeness of the real value on both experiments in contrast with their mean relative error. Increasing the number of replicates may decrease the relative error, but are still grater than the MRE for the homogeneous model. 
+
+\begin{table}[b]\centering
+\caption{Summary of estimated covariance parameters using complete model for homogeneous uniform simulated data.}
+<<tab_hu2comp>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+cp %>%
+    gather(Parameter, value, -c(run,Replicate,type))%>%
+    mutate(re = ifelse(Parameter=="omega",
+                       abs(value-.5)/.5,
+                       abs(value-.6)/.6))%>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\beta^\\eta$"="beta")) %>%
+    group_by(Parameter,Replicate, type) %>%
+    summarise(Median = median(value),
+              Mean = mean(value),
+              `RE Mean` = mean(re),
+              `RE IQR` = IQR(re)) %>%
+    ## summarise(Min = min(value),
+    ##           Median = median(value),
+    ##           Mean = mean(value),
+    ##           Max = max(value),
+    ##           SD = sd(value),
+    ##           IQR = IQR(value)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="par-hu2comp",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1:2, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1:2,
+                  valign = "middle")
+@ 
+\label{tab:par-hu2comp}
+\end{table}
+
+In summary, the complete model fit to a homogeneous uniform data have good mean curves estimates and evidences that the user may have sophiticated too much (informal?). The concentration of expansion parameters over the same value at each subject type must be an indication in favor of the homogeneous model. However, if the common value is the same for all types then it is interesting to consider the homogeneous uniform model. 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%   _____ _                 _       _           _                             _      _       
+%  / ____(_)               | |     | |         | |                           | |    | |      
+% | (___  _ _ __ ___  _   _| | __ _| |_ ___  __| |   ___ ___  _ __ ___  _ __ | | ___| |_ ___ 
+%  \___ \| | '_ ` _ \| | | | |/ _` | __/ _ \/ _` |  / __/ _ \| '_ ` _ \| '_ \| |/ _ \ __/ _ \
+%  ____) | | | | | | | |_| | | (_| | ||  __/ (_| | | (_| (_) | | | | | | |_) | |  __/ ||  __/
+% |_____/|_|_| |_| |_|\__,_|_|\__,_|\__\___|\__,_|  \___\___/|_| |_| |_| .__/|_|\___|\__\___|
+%                                                                      | |                   
+%                                                                      |_|                   
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+\subsection{The simulated complete data}
+\label{sec:comp-fit}
+
+<<setVarFunc>>=
+basis_mtx <- splines::bs(seq(0,1,length.out=48),df = 6,
+                         intercept = TRUE)
+beta_cov <- c(0.660005891928449,0.2770133940503,0.608935503521934,0.859756508376449,0.608338284306228,0.744059770135209,
+              0.643090288387612,0.236336073838174,0.217497098725289,0.221734343795106,0.0359028314705938,0.696014136075974,
+              0.98273342824541,0.780097630107775,0.361326338956133,0.882140269037336,0.0816405781079084,0.828367569483817)
+beta_nu2 <- matrix(beta_cov, ncol=3)
+nu2 <- basis_mtx %*% beta_nu2
+dd_vf <- data.frame(time = rep(1:48/48, times = 3),
+                    type = rep(1:3, each=48),
+                    eta = c(nu2))
+@ 
+
+%% TODO ==============================
+% [] Description: variance  functionals
+% [] Estimation challenge
+% [] What to expect, in general
+
+The aggregated complete model supposes a variance functional $\eta_c(\cdot)$ to describe the curve variability along time. In Figure~\ref{fig:varfunc-simu} we have these functionals used in this experiment for each subject of type $c=1,2,3$. Their shapes were select to be as distinct as possible and have no relationship between them. For this experiment, the decay parameters were fixed as $\boldsymbol \omega = (1/2,1/4,1/8)$.
+
+In addition, Figure~\ref{fig:comp-data} displays an example of simulated data for three groups. Notice that there is not a clear evidence of different variability along time, maybe because there is not a huge range of values in the variance functionals.
+
+The estimation of a complete model may be computationally intensive, depending on the available  amount of data in form of replicates, number of groups and time frequency. To illustrate, using 6 basis functions to expand variance functionals of 3 types of subjects, one may add 18 parameters to be estimated together with the decay parameters in the maximum likelihood routine.
+
+In this section we will study the information loss when estimating less sophisticated models like the homogeneous in a complete model simulated data. We expect to still have acceptable estimated mean  curves, homogeneous dispersion parameters compressing variance functional into a scalar and possibly good estimator for decay parameters.
+
+
+\begin{figure}[!t]
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<varFunc_plot, fig.height=2.5>>=
+    dd_vf %>%
+        ggplot(aes(time,eta)) +
+        geom_line() +
+        facet_wrap(.~type, labeller = label_both) +
+        ylab(TeX("$\\eta_c(t)$")) + xlab(TeX("$t$"))+
+        guides(x = guide_axis(angle = 90))
+    @
+    \caption{Real variance functionals.} \label{fig:varfunc-simu}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<excomp2huFigHU, fig.height=2.5>>=
+    comp2hu$df %>%
+        ggplot(aes(time,obs,group=rep)) +
+        geom_line(alpha=.5) +
+        facet_wrap(.~group) +
+        ylab(TeX("$y_{ij}(t)$")) + xlab(TeX("$t$")) +
+        guides(x = guide_axis(angle = 90))
+    @
+    \caption{Simulated complete data example with 30 replicates.}
+  \end{subfigure}
+  \caption{Complete experiment configuration: (a) real variance functionals and (b) example of simulated aggregated data with 30 replicates for 3 groups.}
+  \label{fig:comp-data}
+\end{figure}
+
+
+
+
+% \newpage
+\subsubsection{Homogeneous uniform fit}
+\label{sec:comp2hu}
+%% TODO
+% [x] Simplest model and expectations: nice curve fit for both, loss of information
+% [x] Mean curves: nice fit for both
+% [x] Covariance parameters: 
+%   [x] dispersion close to mean beta
+%   [x] broader confidence intervals
+
+<<comp2huPreamble, cache=FALSE, message=FALSE>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/mpc_results.R")
+# comp2hu30 <- mpc_2uniform(simu_struct="complete",
+#                         n_rep=30)
+# comp2hu5 <- mpc_2uniform(simu_struct="complete",
+#                        n_rep=5)
+# saveRDS(comp2hu30,"data/comp2hu30.rds")
+# saveRDS(comp2hu5,"data/comp2hu5.rds")
+comp2hu30 <- readRDS("data/comp2hu30.rds")
+comp2hu5 <- readRDS("data/comp2hu5.rds")
+@ 
+
+The homogeneous uniform fit is the most simple model, as mentioned in Section~\ref{sec:mpc2hu}. Its fast computation leads to great amount of covariance information loss if data is a complete aggregated model. However, we expect good estimated mean curves for both experiments with 30 and 5 replicates. The difference of information available may be irrelevant to estimate dispersion and decay parameters because of model simplification.
+
+As expected, Figure~\ref{fig:mpc-comp2hu} shows acceptable mean curves estimates for 5 replicates experiment and good mean curves estimates for 30 replicates experiment. In both cases the median depth curve in magenta is close to the real value in blue, indicating that even the most simple covariance structure is able to deliver good mean curves estimates.
+
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<figcomp2hu5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    <<comp2huPreamble>>
+    comp2hu5$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 5 replicates}
+  \end{subfigure}
+    \begin{subfigure}{\textwidth}
+      \centering
+    <<figcomp2hu30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    <<comp2huPreamble>>
+    comp2hu30$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 30 replicates}
+  \end{subfigure}
+  \caption{Estimated mean curve using homogeneous uniform model for complete simulated data with (a) 5 replicates and (b) 30 replicates. The magenta line is the median depth and the blue line is the real curve.}
+  \label{fig:mpc-comp2hu}
+\end{figure}
+
+
+Dispersion parameter estimates are expected to show the mean value of variance functionals. The mean value of the observed points of each variance functional curves for all subject types is 0.5402, so we expect that dispersion estimates are next to this quantity. On the other hand, decay parameters estimates may not have the similar mean behavior because it is not a linear parameter, but it is reasonable to expect values between $1/8$ and $1/2$.
+
+In fact, Figure~\ref{fig:cpest-comp2hu} shows the expected results for dispersion and decay parameters estimation. The first panel have violins for the parameter $\omega$ between 0.18 and 0.30 for the 5 replicates experiments and slighlty narrow for 30 replicates. Table~\ref{tab:par-comp2hu} indicates their median values as 0.2201 and 0.2307, respectively. It is not the mean value of real decay parameters, which is 0.2917, but it is contained in the interval between $1/8$ and $1/2$.
+
+The dispersion parameter estimates are next to the aforementioned 0.5402 value, as in Figure~\ref{fig:mpc-comp2hu}. Nevertheless, Table~\ref{tab:par-comp2hu} presents their mean values slightly above with 0.5541 for the 5 replicates experiment and 0.5685 for the 30 replicates experiment.
+
+
+\begin{figure}[t]
+ % \begin{subfigure}{\textwidth}
+  \centering
+    <<covparcomp2hu, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    cp <- do.call(rbind,
+                  lapply(list(comp2hu5,comp2hu30),
+                         function(x) x$cov_par
+                         )
+                  )
+    cp$Replicate = rep(c("5 reps","30 reps"), each=30)
+    
+    cp %>%
+        gather(par, value, -c(run,Replicate)) %>%
+#        mutate(line = ifelse(par=="omega", 2^(-type), NA)) %>%
+#        mutate(line = rep(c(.6, .5),each=60)) %>%
+        ggplot(aes(x=Replicate,y=value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+#        geom_hline(aes(yintercept = line), alpha=.4, linetype=2)+
+        facet_wrap(.~par, scales = "free", labeller = label_parsed) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values")+xlab("")
+    @
+    \caption{Estimated covariance parameters} \label{fig:cpest-comp2hu}
+ % \end{subfigure}
+  % \begin{subfigure}{\textwidth}
+  % \centering
+  %   <<recomp2hu, fig.height=2.5, fig.width=5>>=
+  %   cp %>%
+  %       mutate(sigma = abs(1 - sigma/.6),
+  %              omega = abs(1 - omega/.5)) %>%
+  %       gather(par, value, -c(run,Replicate)) %>%
+  %       ggplot(aes(y=100*value)) +
+  %       geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+  %       geom_hline(yintercept=0, alpha=.4, linetype=2)+
+  %       facet_wrap(.~par, scales = "fixed", labeller = labeller(par=label_parsed)) +
+  %       theme(axis.text.x=element_blank(),
+  %             axis.ticks.x=element_blank()) +
+  %       ylab("Relative Error (in %)")
+  %   @
+  %   \caption{Relative errors (in \%) }\label{fig:re-comp2hu}
+  % \end{subfigure}
+ % \caption{Estimated values and their relative errors}
+  \label{fig:cp-comp2hu}
+\end{figure}
+
+
+\begin{table}[b]\centering
+\caption{Summary of estimated covariance parameters using homogeneous uniform model for complete simulated data.}
+<<tab_comp2hu>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+cp %>%
+    gather(Parameter, value, -c(run,Replicate))%>%
+    ## mutate(re = ifelse(Parameter=="omega",
+    ##                    abs(1 - value*2^type),
+    ##                    NaN))%>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma")) %>%
+    group_by(Parameter,Replicate) %>%
+    summarise(Median = median(value),
+              Mean = mean(value)#,
+              ## `RE Mean` = mean(re),
+              ## `RE IQR` = IQR(re)
+              ) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4,
+#          caption = "Nice table", label="par-comp2hu",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1, latex_hline = "major", valign = "middle")
+@ 
+\label{tab:par-comp2hu}
+\end{table}
+
+
+Although the homogeneous uniform fit do have great information loss on covariance parameters estimation, its mean curves still present good estimates around the real value. If the user is interesting only on obtaining the separated signal, it can be a good approximation, but confidence intervals may be broader. Nonetheless, covariance parameters estimated above may also be of good use as initial values for more complex models, improving their convergence and computational times.  
+
+\subsubsection{Homogeneous fit}
+\label{sec:comp2homog}
+%% 4 fits did not converge
+
+%% TODO ========================================
+% [x] description: number of decays are the same as complete (4 dis not conv)
+% [x] expected: decays close to real
+% [] results
+%   [x] mean curves again ok
+%   [x] decays overestimated
+%   [x] dispersion according to mean values of funcVar
+%   [] conclusion: robust MC, good decay pars, even better for complete initialization
+
+
+<<comp2homogPreamble, cache=FALSE, message=FALSE>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/mpc_results.R")
+# comp2homog30 <- mpc_2homog(simu_struct="complete",
+#                         n_rep=30)
+# comp2homog5 <- mpc_2homog(simu_struct="complete",
+#                        n_rep=5)
+#  saveRDS(comp2homog30,"data/comp2homog30.rds")
+#  saveRDS(comp2homog5,"data/comp2homog5.rds")
+comp2homog30 <- readRDS("data/comp2homog30.rds")
+comp2homog5 <- readRDS("data/comp2homog5.rds")
+@ 
+
+
+\begin{figure}[!t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<figcomp2homog5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    comp2homog5$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 5 replicates}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<figcomp2homog30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    comp2homog30$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 30 replicates}
+  \end{subfigure}
+  \caption{Estimated mean curves using homogeneous model for complete simulated data with (a) 5 replicates and (b) 30 replicates. The magenta line is the median depth and the blue line is the real curve.}
+  \label{fig:mpc-comp2homog}
+\end{figure}
+
+The homogeneous fit have the same correlation structure as the complete model with three decay parameters. Now we have information loss only in dispersion parameters, but still an estimated value for each subject type. It is important to note that in the 5 replicates experiment 4 models did not converge and another 4 converged but resulted in discrepancies as will be elucidated later.
+
+We expect that decay parameters have estimated value close to their real values, besides the dispersion parameters. Since they are independent, information lost by the variance functional should not have effect on decay parameters estimates. However, it can be a problem for the numerical optimization algorithm, which will have difficulties to find a dispersion value to converge and along iterations may search for decay parameters local maxima.
+
+Again, the estimated mean curves are well concentrated around their real values, even the experiment runs with local maxima convergence had acceptable mean curves. Also it is not possible to  point the curve in Figure~\ref{fig:mpc-comp2homog} upper panel which had this abnormality on covariance parameters estimates.
+
+In Figure~\ref{fig:cpest-comp2homog} it is clear that some decay parameters estimates have converged to local maxima. The 4 cases had discrepancies only in one of the three parameters, that is, there was not a simultaneous discrepancy for all parameters, but only one scalar.
+
+Nonetheless, the 30 replicates experiment did converge all its values next to their real. Table~\ref{tab:par-comp2homog} shows its mean and median slightly overestimated, but with acceptable relative error for types 1 and 3. The 5 replicates experiment also had bad estimates for type 2, but acceptable for types 1 and 3. 
+
+Due to independence of dispersion and decay parameters, $\sigma$ estimates were not affected by $\omega$ results. The average of the observed values of the real variance functionals for each subject type are in sequence: 0.6334, 0.2755, 0.6120. In Table~\ref{tab:par-comp2homog} we observe that dispersion parameter estimates at least follows the pattern of a smaller value for type 2 on both experiments, but good estimates for 30 replicates. 
+
+
+\begin{figure}[t]
+ \begin{subfigure}{\textwidth}
+  \centering
+    <<covparcomp2homog, fig=TRUE, fig.width=5, fig.height=3.5>>=
+    <<comp2homogPreamble>>
+    cp <- do.call(rbind,
+                  lapply(list(comp2homog5,comp2homog30),
+                         function(x) x$cov_par
+                         )
+                  )
+    cp$Replicate = rep(c("5 reps","30 reps"), each=90)
+    
+    cp %>%
+        gather(par, value, -c(run,Replicate,type)) %>%
+        mutate(line = ifelse(par=="omega", 2^(-type), NaN)) %>%
+#        mutate(line = rep(c(NA,NA,NA,.5,1/4,1/8),each=60)) %>%
+        ggplot(aes(x=Replicate,y=value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(aes(yintercept = line), alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "free_y",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values") + xlab("")
+    @
+    \caption{Estimated covariance parameters} \label{fig:cpest-comp2homog}
+   \end{subfigure}
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<recomp2homog, fig.height=2.5, fig.width=5>>=
+    cp %>%
+        mutate(omega = abs(1 - omega*(2^type))) %>%               
+        gather(par, value, -c(run,Replicate,type)) %>%
+        filter(par != "sigma") %>%
+        ggplot(aes(x=Replicate,y=100*value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=100*value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(yintercept=0, alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "fixed",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Relative errors (in %)")+xlab("") + ylim(c(0,100))
+    @
+   \caption{Relative errors (in \%) }\label{fig:re-comp2homog}
+ \end{subfigure}
+ \caption{Estimated covariance parameters values using homogeneous model for complete simulated data and their relative errors.}
+  \label{fig:cp-comp2homog}
+\end{figure}  
+
+
+\begin{table}[b]\centering
+\caption{Summary of estimated covariance parameters using homogeneous model for complete simulated data.}
+<<tab_comp2homog>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+cp %>%
+    gather(Parameter, value, -c(run,Replicate,type))%>%
+    mutate(re = ifelse(Parameter=="omega",
+                       abs(1-value*2^(type)),
+                       NaN))%>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma")) %>%
+    group_by(Parameter,Replicate, type) %>%
+    summarise(Median = median(value, na.rm=TRUE),
+              Mean = mean(value, na.rm=TRUE),
+              `RE Mean` = mean(re, na.rm=TRUE),
+              `RE IQR` = IQR(re,na.rm=TRUE)) %>%
+    ## summarise(Min = min(value),
+    ##           Median = median(value),
+    ##           Mean = mean(value),
+    ##           Max = max(value),
+    ##           SD = sd(value),
+    ##           IQR = IQR(value)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="par-comp2homog",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1:2, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1:2,
+                  valign = "middle")
+@ 
+\label{tab:par-comp2homog}
+\end{table}
+The 4 discrepant estimates for decay parameters were important to show the robustness of separated mean curves and its independence to the covariance parameters. It also confirmed the independence of dispersion parameters, where the experiment runs with local maxima convergence did not resulted in  discrepant values for $\sigma$ as well.
+
+The homogeneous model may be useful to give even better initial values for complete model, since it might have estimated values for decay parameters sufficiently close to their real number and $\sigma$ estimates good to locate the initial values of the variance functional expansion coefficients.
+
+
+\subsubsection{Complete fit}
+\label{sec:comp2comp}
+%% One fit did not converge
+%% 7 discrepancies on decay (omega>1) for 5rep
+
+
+<<prepcomp2compl>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/mpc_results.R")
+# comp2comp30 <- mpc_2complete(simu_struct="complete",
+#                            n_rep=30)
+# comp2comp5 <- mpc_2complete(simu_struct="complete",
+#                           n_rep=5)
+# saveRDS(comp2comp30,"data/comp2comp30.rds")
+# saveRDS(comp2comp5,"data/comp2comp5.rds")
+comp2comp30 <- readRDS("data/comp2comp30.rds")
+comp2comp5 <- readRDS("data/comp2comp5.rds")
+@ 
+
+Finally we are able to test the complexity of the complete model into a complete model simulated data set. Its is a computationally extensive routine that gives the estimated variance functional, dispersion parameters and of course the separated mean curves. As in homogeneous case we had one experiment run that  did not converge for 5 replicates data.
+
+Since we are on the correct covariance structure selection, we expect to see good dispersion parameters estimates and variance functional close to its real shape. As seen in previous sections the estimated mean curves may be again well located  around its real curves for both replicates experiments.
+
+
+\begin{figure}[!t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<figcomp2comp5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    comp2comp5$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves using 5 replicates}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<figcomp2comp30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    comp2comp30$plot_mc+ theme(legend.position="none")+ guides(x = guide_axis(angle = 90)) +ylab("")
+    @
+    \caption{Estimated mean curves 30 replicates}
+  \end{subfigure}
+  \caption{Estimated mean curves using complete model for complete simulated data with (a) 5 replicates and (b) 30 replicates. The magenta line is the median depth and the blue line is the real curve.}
+  \label{fig:mpc-comp2comp}
+\end{figure}
+
+In Figure~\ref{fig:mpc-comp2comp} we have the expected good estimates for the mean curves. Again, besides the broader dispersion on 5 replicates experiment, both cases have median depths very close to the real curves.
+
+The estimated variance functionals are displayed in Figure~\ref{fig:covplotcomp2comp}. Remember that they are estimated by expanding the functional via basis functions and obtaining the expansion coefficients by numerical optimization. So it is expected that functionals are not so well estimated as the separated mean curves, which is performed by weighted least squares.
+
+Then, in the 5 replicates experiment located in the upper panel we see acceptable median depths for the estimated functionals but a reasonably amount of curves fairly distant from the real one, specially for types 1 and 2. Besides that, it is possible to see that in type 1 the estimated curves tries to follow the real curve shape, which is difficult to occur on type 2. 
+
+On the other panel we have the 30 replicates experiment with better estimates for type 1 variance functional, but still finding discrepant curves for type 2, besides occurring less than the 5 replicates experiment. It is clear that 5 replicates may be undersized information for a model of this complexity.
+
+
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<covplotcomp2comp5, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    comp2comp5$plot_cov+
+    #    geom_hline(yintercept=.6, col="magenta", alpha=.8, linetype=2, linesize=2)+
+        theme(legend.position="none")+
+        guides(x = guide_axis(angle = 90)) +
+        ylab(TeX("$\\eta_c(t)$")) + xlab(TeX("time $(t)$"))
+    @
+    \caption{Variance functionals estimates using 5 replicates}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<covplotcomp2comp30, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    comp2comp30$plot_cov+
+    #    geom_hline(yintercept=.6, col="magenta", alpha=.8, linetype=2, linesize=2)+
+        theme(legend.position="none")+
+        guides(x = guide_axis(angle = 90)) +
+        ylab(TeX("$\\eta_c(t)$")) + xlab(TeX("time $(t)$"))
+    @
+    \caption{Variance funcionals estimated using 30 replicates}
+  \end{subfigure}
+  \caption{Estimated variance functionals for homogeneous uniform simulated data with (a) 5 replicates and (b) 30 replicates. The blue line is the real value.}
+  \label{fig:covplotcomp2comp}
+\end{figure}
+
+Decay parameters have median values relatively closer to their real values in comparison with the homogeneous model. Still, we had 7 estimated values in the 5 replicates experiment with values greater than 1. Because of this, in Figure~\ref{fig:cpest-comp2comp} values are truncated below 1.0 for better visualization and it is possible to see their medians closer to the dashed lines.
+
+Even in the 5 replicates experiment the median of estimated values are fairly close to the real value. In Figure~\ref{fig:cpest-comp2comp} it is visible its  uncertainty due to less information and resulting in extensive violin, but notice that the median lines are as close as the 30 replicates cases for type 1 and not very distant for types 2 and 3.
+
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+  \centering
+    <<covparcomp2comp, fig=TRUE, fig.width=5, fig.height=2.5>>=
+    cp <- do.call(rbind,
+                  lapply(list(comp2comp5,comp2comp30),
+                         function(x) x$cov_par
+                         )
+                  )
+    cp$Replicate = rep(c("5 reps","30 reps"), each=90)
+    
+    cp %>%
+        gather(par, value, -c(run,Replicate,type)) %>%
+        mutate(line = ifelse(par=="omega", 2^(-type), NA)) %>%
+        filter(value < 1) %>%
+#        mutate(line = rep(c(.5),each=180)) %>%
+        ggplot(aes(x=Replicate,y=value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        geom_hline(aes(yintercept = line), alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "free_y",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values") 
+    @
+    \caption{Estimated covariance parameters (truncated in 1.0)} \label{fig:cpest-comp2comp}
+ \end{subfigure}
+ \begin{subfigure}{\textwidth}
+  \centering
+    <<recomp2comp, fig.height=2.5, fig.width=5>>=
+    cp %>%
+        mutate(omega = abs(1 - omega*(2^type))) %>%               
+        gather(par, value, -c(run,Replicate,type)) %>%
+        filter(par != "sigma") %>%
+        ggplot(aes(x=Replicate,y=100*value)) +
+        geom_violin(aes(fill=Replicate), draw_quantiles=c(.25,.5,.75),trim=TRUE)+
+        ## ggplot(aes(y=100*value)) +
+        ## geom_boxplot(aes(fill=Replicate), notch=TRUE)+
+        geom_hline(yintercept=0, alpha=.4, linetype=2)+
+        facet_wrap(par~type, scales = "fixed",
+                   labeller = labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Relative Error (in %)")+xlab("") + ylim(c(0,100))
+    @
+   \caption{Relative errors (truncated in 100\%) }\label{fig:re-comp2comp}
+ \end{subfigure}
+ \caption{Estimated covariance parameters values using complete model for complete simulated data and their relative errors.}
+  \label{fig:cp-comp2comp}
+\end{figure}  
+
+
+In Table~\ref{tab:par-comp2comp} we confirm the that the 30 replicates experiment had good performance with mean values very close to its real values and low relative errors for type 1 and 3. As in the variance functionals, the model found difficulties to estimate parameters for type 2. However, the discrepancy estimates have clearly impact on estimates mean for type 2. In fact, 6 of the 7 discrepancies occurs in type 2. But if we look the median column it is still better than the homogeneous fit, with estimated values for types 1 and 3 next to their real values.
+
+\begin{table}[t]\centering
+\caption{Summary of estimated covariance parameters using complete model for complete simulated data.}
+<<tab_comp2comp>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+cp %>%
+    gather(Parameter, value, -c(run,Replicate,type))%>%
+    mutate(re = ifelse(Parameter=="omega",
+                       abs(1 - value*2^type),
+                       NA))%>%
+    mutate(Parameter = fct_recode(factor(Parameter)),
+                                  "$\\omega$" = "omega") %>%
+    group_by(Replicate, type) %>%
+    summarise(Median = median(value, na.rm=TRUE),
+              Mean = mean(value,na.rm=TRUE),
+              `RE Mean` = mean(re, na.rm=TRUE),
+              `RE IQR` = IQR(re, na.rm=TRUE)) %>%
+    ## summarise(Min = min(value),
+    ##           Median = median(value),
+    ##           Mean = mean(value),
+    ##           Max = max(value),
+    ##           SD = sd(value),
+    ##           IQR = IQR(value)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4,# align="c",
+#          caption = "Nice table", label="par-comp2comp",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1,
+                  valign = "middle")
+@ 
+\label{tab:par-comp2comp}
+\end{table}
+
+
+The parameter estimation for complete model had good results even for 5 replicates data. The separated mean curves were again close to their real curves, variance  functionals have median depth fairly close to the real curve, but found difficulties for subjects of type 2 as well as decay parameters.
+
+
+\subsection{Results discussion}
+\label{sec:mpc-disc}
+
+The mean curve estimation had positive results in all experiments, even using 5 replicates. This result is expected since the least square estimator has unbiased mean and independence of covariance matrix. Of course, with 30 replicates the precision gain is visible with minor relative errors and less dispersed estimates.
+
+Some runs did not converge in the simulated complete data experiment when a homogeneous and even complete models were fit using 5 replicates. It can occur because of difficulties to estimate a considerably number of parameters via numerical optimization in the presence of few replicate. This did not happen in the homogeneous uniform fit maybe because 5 replicates are sufficient to estimate 2 parameters in contrast with the 6 parameters of homogeneous model. On the other hand, the sophistication of complete model requires more information in form of replicates to have a major probability of successful convergence.
+
+It is possible to suspect if the model oversophisticated data covariance structure. In the homogeneous uniform model, estimated variance functionals concentrate around the horizontal line of the real dispersion parameter while decay parameters have similar values. However, it is not very clear in the complete experiment indications of oversimplification besides the possibly big standard errors. 
+
+
+
+% \begin{itemize}
+% \item Mean curves robustness
+% \item Better fit with more replicates, when groups are fixed
+% \item Some runs did not converge for homog and complete cases, when simulated complete
+% \item It is possible to see if you sophisticated the model too much: when HU simulated, parameters estimation shows that it is homogeneous
+% \item Nice cov functional median with 5 replicates.
+% \item There is an unknown bias in HU fit
+% \end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %  ______     _ _                       _ 
+ % |  ____|   | | |                     | |
+ % | |__ _   _| | |  _ __ ___   ___   __| |
+ % |  __| | | | | | | '_ ` _ \ / _ \ / _` |
+ % | |  | |_| | | | | | | | | | (_) | (_| |
+ % |_|   \__,_|_|_| |_| |_| |_|\___/ \__,_|
+ %
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                         
+
+
+
+\section{Full model estimation}
+\label{sec:simu-fm}
+
+
+\begin{figure}[t]
+  \centering
+  <<fm-ex,fig.height=4>>=
+  tmp = readRDS("data/fm_example.rds")
+  tmp %>%
+      mutate(grp = factor(paste("Group",group-3), levels=paste("Group",1:10))) %>%
+      ggplot(aes(time,obs,col=temperature,group=rep))+
+      geom_line() + xlab("Time")+
+      facet_wrap(.~grp, scales = "free") + ylab("Aggregated data") +
+      guides(x = guide_axis(angle = 90))
+  @ 
+  \caption{Simulated data for full aggregated model using 30 replicates.}
+  \label{fig:fm-ex}
+\end{figure}
+
+% full model intro: surface, covariates, complexity,
+The aggregated data model can accommodate explanatory variables and an additional functional component on the mean curves, as detailed in Section~\ref{sec:method-fm}. Let $T(t)$ be the temperature at time $t$ as the additional functional component and we have a relashionship between the separated signal and temperature.
+
+% LS estimation
+The temperature and the explanatory variables mantains the aggregated equation as a linear model. Then it is possible to use weighted least squares to  estimate the coefficients of the tensor product of basis  functions and the  associated explanatory variables.
+
+% Exp setup
+The experiments are divided in two groups:  one with 6 replicates and 10 groups and the other with 30 replicates and 10 groups. As in Section~\ref{sec:mpc} groups are kept fixed. Each experiment is composed by 30 runs of simulated data with three subject types and time frequency and market construction also as in Section~\ref{sec:mpc}.
+
+We split temperature into two stages with different means. To simulate winter and spring stations in Campinas, Brazil, we use a set with mean temperature of 15\textdegree C to the first half of replicates and then a set with mean temperature of 24\textdegree C to the another half. For example, in the 6 replicates experiment, each run will we have 3 replicates of winter and 3 replicates of spring. 
+
+To describe the mean curves with the temperature component we used the equation
+
+\begin{equation}
+  \label{eq:simu-mc}
+  \alpha_c\Big(u(t), v(t)\Big)
+  =
+  \alpha_c\Big(t, T(t)\Big)
+  =
+  \alpha_c(t)
+  \times
+  \log
+  \Big(
+  \log
+  \big(
+  T(t)
+  \big)
+  \Big),  
+\end{equation}
+
+\noindent with $\alpha_c(\cdot)$ as in Section~\ref{sec:mpc}. 
+%\myeqref{eq:simu-mc} shows a multiplicative effect of temperature on the mean curves. 
+For spring temperatures, with values around 24\textdegree C, \myeqref{eq:simu-mc} increase the mean curves $\alpha_c(\cdot)$ by approximately 15\%, while in winter it has almost no effect since $\log \log 15 \approx 1$.
+
+% Experiment fixed parameters: surface equation, covariates and covpars
+Explanatory variables are dummy variables $x_1$ associated to groups 1 and 2 and $x_2$ associated to group 10. Their coefficients are fixed as 50 and -4 respectively. In Figure~\ref{fig:fm-ex} it is possible to notice the shift on groups 1 and 2 vertical scale but it is not evident for group 10.
+
+ The selected covariance structure is the homogeneous with decay and dispersion parameters for each subject type. The used parameters are available in Table~\ref{tab:fm-pars}.
+
+\begin{table}[t]
+  \centering
+  \caption[fm]{Covariance parameters used in full model simulation}
+  \begin{tabular}[lccc]{lccc}
+    \toprule
+    Parameter & Type 1 & Type 2 & Type 3 \\
+    \midrule
+    Dispersion: $\sigma_c$ & $0.4$ & $0.5$ & $0.6$ \\
+    Decay: $\omega_c$ & $1/2$ & $1/4$ & $1/8$ \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:fm-pars}
+\end{table}
+
+
+% Expected results
+The aggregated data model with explanatory variables and temperature component have large number of mean curves expansion parameters because the tensor product decribed in Section~\ref{sec:method-fm}. However, these parameters are obtained via weighted least squares and Section~\ref{sec:mpc} presented that mean curves may have good estimates even with a considerably low amount of replicates. With this, we expect that mean curves and explanatory variables may have good estimates as well. The covariance parameters estimates might have precision directly related to the number of replicates, but maybe find some difficulties in the presence of a more sophisticated model.
+
+
+
+
+\subsection{Mean surface fit}
+\label{sec:fm-fit}
+
+<<fm_preamble>>=
+# source("~/Drive/01. Tese/thesis/R/simu/getResults/fullmodel_results.R")
+# fm_5r <- get_fullmodel(n_rep=6)
+# fm_30r <- get_fullmodel(n_rep=30)
+# saveRDS(fm_5r,"data/fm_5r.rds")
+# saveRDS(fm_30r,"data/fm_30r.rds")
+fm_5r <- readRDS("data/fm_5r.rds")
+fm_30r <- readRDS("data/fm_30r.rds")
+@ 
+
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fmPlot10g5r>>=
+    ID = seq(0,1,by=.5)
+    fm_5r$plot +
+        ylab("") +
+        scale_x_continuous("Time", labels = as.character(ID), breaks = ID) 
+    @ 
+    \label{fig:fm-fit6rep}
+    \caption{Mean surface estimates using 5 replicates.}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    <<fmPlot30r>>=
+    fm_30r$plot+
+        ylab("") +
+        scale_x_continuous("Time", labels = as.character(ID), breaks = ID) 
+    @ 
+    \label{fig:fm-fit30rep}
+  \caption{Mean surface estimates using 30 replicates.}
+  \end{subfigure}
+    \caption{Mean surface estimates for three levels of temperature: 15.08\textdegree C, 21.80\textdegree C and 24.14\textdegree C using (a) 5 replicates and (b) 30 replicates.}
+  \label{fig:fm-fit}
+\end{figure}
+
+
+% Intro: temperature division 15,21,24
+To show the mean surface estimates we decided to present a contour plot in specific temperatures. As aforementioned, temperatures are divided into two winter and spring with averages of 15\textdegree C and 24\textdegree C, respectively. Then, we offer in Figure~\ref{fig:fm-fit} a contour plot at temperatures 15.08\textdegree C, 21.8\textdegree C and 24.14\textdegree C to represent the mean curve along time at these values.
+
+% show fig
+As expected, the 30 replicates experiment in Figure~\ref{fig:fm-fit30rep} have more precision and narrow dispersion of estimates than the 6 replicates experiment in Figure~\ref{fig:fm-fit6rep}. The differences between temperatures are almost invisible because from 15\textdegree C to 24\textdegree C the increse in value is about 15\%. So in this scale, the difference between mean curves are about 0.1. The 30 replicates experiment capture this small difference, but with less replicates the dispersion of estimates are larger than the difference to be captured, besides the median depth located next to the real value.
+
+% hard on 21, because u dont have many obs, but still ok
+The choice for the 21.8\textdegree C temperature is because it is a rare observation on simulated dataset. Remember that we have temperatures 15\textdegree C and 24\textdegree C with stardard deviation of 2, so it is unlikely that we observe temperatures of 21\textdegree C. Nonetheless, it is important that the model captures the whole context, even under small information on certain temperatures. Of course, one may not expect good results for temperatures too far from the observed range, like 0\textdegree C or 40\textdegree C. But it is acceptable to expect good estimates inside the observed range interval.
+
+Thus observe that temperature 21.8\textdegree C have even more dispersion on 6 replicates experiment than the narrow estimates on 30 replicates. Definitely, with more replicates, temperatures far from 15\textdegree C and 24\textdegree C have better chances to appear on data. 
+
+
+% conclusion: good where there are much info for 5 reps
+In summary, surface estimates on 6 replicates experiment suffers to capture the small effect of temperatures, which is possible for 30 replicates. Additionally, uncommon temperature points may have more uncertainty on its mean curves estimates. 
+
+
+\subsection{Explanatory variables}
+\label{sec:fm-covariates}
+
+
+
+<<fm_covariates>>=
+gamma5 <- subset(fm_5r$beta, par != "Surface")
+gamma5$num = 1:2
+gamma5$real = c(50, -4)
+gamma30 = gamma5
+gamma30$beta = subset(fm_30r$beta, par != "Surface")$beta
+gamma <- rbind(gamma5,gamma30)
+gamma$Replicate <- rep(c("6 reps", "30 reps"),each = 60)
+@ 
+
+\begin{figure}[t]
+  \centering
+  <<plot_gamma>>=
+  gamma %>%
+      ggplot(aes(par,beta,fill=Replicate))+
+      geom_violin(draw_quantiles=c(.25,.5,.75), trim=TRUE)+
+      geom_hline(aes(yintercept = real), linetype=2, alpha=.5)+
+      facet_wrap(.~num, scales="free",
+                 labeller=label_bquote(gamma [.(num)]))+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values")  + xlab("")
+  @ 
+  \caption{Explanatory variables coefficients estimates.}
+  \label{fig:fm-gamma}
+\end{figure}
+
+% intro: covar values
+Let $\gamma_1=50$ and $\gamma_2=-4$ be the coefficients associated to the explanatory variables of the experiment. As seen in Figure~\ref{fig:fm-ex}, $\gamma_1$ effect is visible since groups 1 and 2 are the only with signal value above 100. However, $\gamma_2$ have a silent effect on group 10, where it could be unoticed as it is in the same range of values of other groups.
+
+
+% show figure: median good estimates, LS baby!
+Fortunately, the aggregated model is able to detect both coefficients for both experiments. In Figure~\ref{fig:fm-gamma} we have the coefficient estimates displayed in violin plots. The dashed lines almost coincide with median reference line for 30 replicates and also close for 6 replicates experiment. Of course, the experiment with fewer replicates have broader violins due to its uncertainty, but on average it seems to be accepatable.
+
+
+% table, relative error (6 rep)
+The precision of estimates are visible in Tabel~\ref{tab:fm-expl-tab}. The larger effect, $\gamma_1$ is precisely estimated for both experiment, with short relative error, but considering its magnitude is clear in Figure~\ref{fig:fm-ex}. Below, the parameter $\gamma_2$ need replicates information to achieve precision on estimates, besides both medians are very close to the real value. 
+
+% conclusion: robust, yeah!
+Thus quality of estimation of explanatory variables associated coefficients is clearly dependent on effect size and information available in form of replciates. If the effect is evident like $\gamma_1$ then it is easy to estimate independent to the number of replicates. But if the effect is non visible like $\gamma_2$, estimates have median close to the real value, but it is necessary more replicates information to obtain more precision.
+
+
+\begin{table}[b]\centering
+\caption{Summary of explanatory variables coefficients estimates.}
+<<beta_cvriate_tab>>=
+gamma %>%
+    mutate(re = abs(1 - beta/real))%>%
+    mutate(Parameter = fct_recode(factor(num),
+                                  "$\\gamma_1$" = "1",
+                                  "$\\gamma_2$"="2")) %>%
+    group_by(Parameter,Replicate) %>%
+    summarise(Median = median(beta, na.rm=TRUE),
+              Mean = mean(beta, na.rm=TRUE),
+              `RE Mean` = mean(re, na.rm=TRUE),
+              `RE IQR` = IQR(re,na.rm=TRUE)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="fm-expl-tab",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1:2, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1:2,
+                  valign = "middle")
+@ 
+\label{tab:fm-expl-tab}
+\end{table}
+
+\subsection{Covariance parameters}
+\label{sec:fm-covar}
+
+%% NOTES
+% 3 exp for 5 reps that had omega >5 (removed here)
+
+<<fm_covar_prep>>=
+fm_covar5 = fm_5r$cov_par
+fm_covar5$Replicate = "6 reps"
+fm_covar30 = fm_30r$cov_par
+fm_covar30$Replicate = "30 reps"
+fm_covar = rbind(fm_covar5,fm_covar30)
+@ 
+
+
+\begin{figure}[t]
+  \centering
+  <<plot_fm_covar>>=
+  fm_covar %>%
+      filter(omega < 1) %>%
+      gather(par, value, -c(type,run,Replicate)) %>%
+      mutate(real = ifelse(par=="omega",
+                           2^(-type),
+                           .3+type/10)) %>%
+      ggplot(aes(Replicate,value,fill=Replicate)) +
+      geom_violin(draw_quantiles=c(.25,.5,.75), trim=TRUE)+
+      geom_hline(aes(yintercept = real), linetype=2, alpha=.5)+
+      facet_wrap(par~type, scales="free",
+                 labeller=labeller(type=label_both,par=label_parsed)) +
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank()) +
+        ylab("Estimated values")  + xlab("")
+  @ 
+  \caption{Covariance parameters estimates for the full model experiment.}
+  \label{fig:fm-covar}
+\end{figure}
+
+% homog in full model. maybe hard to fit but expected to be as previous sec
+The homogeneous model presented itself as a model with good performance for homogeneous uniform and acceptable efficacy for complete simulated data when in 30 replicates experiments in Section~\ref{sec:mpc}. This experiment may be compared to the complete simulated data, where it had a complex model structure with functionals for mean curves and variance. The additional temperature component does not dispute directly the degrees of freedom to estimate the mean surface like the variance functional, but can be an extra obstacle to estimate dispersion and decay parameters.
+
+% fig, removed 3 runs w/ omega >5
+In Figure~\ref{fig:fm-covar} we have the violin plots for parameters estimates. In the  upper left corner we had to supress three runs on 6 replicates experiment because of $\omega_1$ estimates above 5 that could difficult data visualization. Following, estimates have similar dispersion range on both experiments for most of parameters, but the median lines for 30 replicates is more assertive on most cases.Only parameters of type 3 are clearly distinct for both replicates.
+
+% table
+The uncertainty is noticed in Table~\ref{tab:fm-tab}. We expected more parameter estimation precision on the 30 replicates experiment, but we found that for types 1 and 2 the relative errors are above 25\% and almost 10\% for type 3. The aforementioned runs with discrepant $\omega$ estimates are visible in the mean estimates value and mean relative error for 6 replicates experiment. Dispersion parameters have also considerably relative errors for 30 replicates, but adequate medians.
+
+
+% conclusions
+The homogeneous model must separate data variability of what is from the temperature effect and what is true dispersion. Consequently, covariance parameters depends on appropriate surface estimation. The uncertainty on mean surface estimation on 6 replicates experiment led to acommodate this variability on the temperature effect which underestimated the dispersion parameters in Table~\ref{tab:fm-tab}. Thus to fit the full aggregated model the user must have a sufficient replicates and groups to estimate the mean surfaces with precision and separate the temperature variability from the dispersion parameter.
+
+
+
+\begin{table}[t]\centering
+\caption{Summary of covariance parameters estimates.}  
+<<tab_fullmodel>>=
+library(knitr)
+library(kableExtra)
+library(forcats)
+fm_covar %>%
+    gather(Parameter, value, -c(run,Replicate,type))%>%
+    mutate(re = ifelse(Parameter=="omega",
+                       abs(1-value*(2^type)),
+                       abs(1 - value/(.3+type/10))))%>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma")) %>%
+    group_by(Parameter,Replicate, type) %>%
+    summarise(Median = median(value, na.rm=TRUE),
+              Mean = mean(value, na.rm=TRUE),
+              `RE Mean` = mean(re, na.rm=TRUE),
+              `RE IQR` = IQR(re,na.rm=TRUE)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="fm-tab",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1:2, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1:2,
+                  valign = "middle")
+@
+\label{tab:fm-tab}
+\end{table}
+
+
+
+\subsection{Discussion}
+
+The surface is an interesting approach to study the effect of two functional components in the mean response, but it requires some caution with ranges where there is few data as the middle temperature 21.8\textdegree C. However, explanatory variables coefficients had positive performance with both  5 and 30 replicates. The major effect $\gamma_1$ had expected more precision while parameter $\gamma_2$ had slightly greater relative error due to its not so evident effect.
+
+A sophistication of the full model requires information to properly estimate covariance parameters. The 5 replicates experiments had estimated values fairly distant from their real values and still converged in the optimization method. Thus it is recommended to use the full model approch if there is sufficient data to estimate all covariance estimates. If not, maybe considering an homogeneous uniform model might provide a mean effect of all subject types, but losing subject specification.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %   _____ _           _            
+ %  / ____| |         | |           
+ % | |    | |_   _ ___| |_ ___ _ __ 
+ % | |    | | | | / __| __/ _ \ '__|
+ % | |____| | |_| \__ \ ||  __/ |   
+ %  \_____|_|\__,_|___/\__\___|_|   
+ %
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Clustering analysis}
+\label{sec:simu-cluster}
+
+%% Cluster intro
+In Section~\ref{sec:clustering} we presented a model-based clustering for aggregated functional data. We proposed a latent variable $Z_j$ which will assign a group $j$ to a cluster $b$ based on the similarity between their separated mean curves. We designed an experiment to assess correct clustering allocation, and mean curves  and covariance paratemeter estimation.
+
+%% Data config: 12b1, 18b2, 30 runs, no temperature and no expl vars
+The simulated data is composed by 12 groups from cluster 1 and 18 groups from cluster 2, where the non simmetric division minimizes cluster interchangeability. The number of replicates is fixed in 30 and again we dispose of 30 experiment runs. The simulated data does not have temperature or explanatory variable effects.
+
+
+%% Covariance parameters
+Covariance parameters are defined in Table~\ref{tab:cl-par}. For cluster 1 we defined a homogeneous uniform model with decay and dispersion parameters equal for each subject type, while in cluster 2 we have the homogeneous model. Parameters in cluster 1 are the same as in the homegenous uniform simulated data in Section~\ref{sec:mpc} and in cluster 2 are equivalen to the full model experiment in Section~\ref{sec:simu-fm}.
+
+
+%% Real mc plot
+The mean values used in previous simulation sections will be assigned to cluster 2. For cluster 1 we will use the resulting separated mean curves for the transformators problems to simulate a real world curve~\cite{dias2009non}. Both curves are displayed in Figure~\ref{fig:cl-mc}.
+
+The experiment design results in simulated data as in Figure~\ref{fig:cl-simudata}, where groups 1 to 3 are from cluster 1 and groups 28 to 30 belong to cluster 2. It is plausible to question if these sets of groups have the same set of mean curves, seeing that their shapes are relatively different even under noise effect.
+
+\begin{figure}[t]
+  \begin{subfigure}{\textwidth}
+  \centering
+  <<cl_mc_plot>>=
+  ID = seq(0,1,by=.5)
+  data(simulatedMeanCurves, package="aggrmodel")
+  data.frame(type = rep(rep(1:3, each=48),times=2),
+             time = rep(1:48/48, times=6),
+             mc = c(simulatedMeanCurves$Cluster1,simulatedMeanCurves$Cluster2),
+             cluster = rep(1:2, each=48*3)) %>%
+      ggplot(aes(time,mc)) +
+      geom_line() +
+      facet_wrap(cluster~type, labeller=label_both)+
+      ylab(TeX("$\\alpha_{cb}(t)$")) + xlab(TeX("$t$"))  +
+      scale_x_continuous("Time", labels = as.character(ID), breaks = ID) 
+  @ 
+  \caption{Real mean curves for each cluster}
+  \label{fig:cl-mc}
+\end{subfigure}
+\begin{subfigure}{\textwidth}
+  \centering
+  <<cl_ex_plot>>=
+  cl_dd <- readRDS("data/example_cluster_data.rds")
+  cl_dd$df %>%
+      mutate(cluster = rep(1:2, each=nrow(cl_dd$df)/2)) %>%
+      filter(group %in% c(1:3,28:30)) %>%
+      ggplot(aes(time,obs,group=rep)) +
+      geom_line(alpha=.4) +
+      facet_wrap(cluster~group, labeller=label_both, scales="free")+ylab("Aggregated load") +
+      scale_x_continuous("Time", labels = as.character(ID), breaks = ID) 
+  @ 
+  \caption{Simulated data example}
+  \label{fig:cl-simudata}
+\end{subfigure}
+\end{figure}
+
+Two covariance structures will be tested in the same 30 experiment runs: the homogeneous uniform model and the homogeneous model. We expect that the homogeneous uniform model will have good performance on cluster 1 and present results similar to Section~\ref{sec:mc2homog} for cluster 2, whereas the homogeneous model must give us evidences of uniformity in cluster 1 and estimates close to real values in cluster 2.
+
+%% Expected results
+We also await that most groups will be assigned correctly since there is a clue for possible distinct mean curves in Figure~\ref{fig:cl-simudata}. Assessing correct clustering, the mean curves must be close to their real value.
+
+
+\begin{table}[b]\centering
+\caption{Real covariance parameters for clustering experiment.}
+<<tab_cl_par>>=
+tibble(Parameter = rep(c("$\\omega$","$\\sigma$"),each=2),
+       Cluster = rep(1:2,2),
+       `Type 1` = c(.5,.5,.6,.4),
+       `Type 2` = c(.5,.25,.6,.5),
+       `Type 3` = c(.5, 1/8,.6,.6)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="cl-par",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1,
+                  valign = "middle")
+@
+\label{tab:cl-par}
+\end{table}
+
+<<clusterPrep>>=
+# uncacher: 0
+c_hu <- readRDS("data/results_simu_cluster_uniform.rds")
+c_homog <- readRDS("data/results_simu_cluster_homog.rds")
+@ 
+
+\subsection{Homogeneous uniform model}
+\label{sec:cl-hu}
+
+%% NOTES =============================
+% - runs 14, 25, 26 d id not converge
+% - they were removed
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% DEscr
+The homogenous uniform model have the tradeoff between fast computation and information loss on covariance parameters estimation. In Sections~\ref{sec:mpc} and \ref{sec:simu-fm} we saw that the mean curve estimation is robust for any covariance structure, except that it may impact on its confidence intervals. So if the user is interested only in obtaining the separated curves for a first analysis it might be a fair choice. However, in this case the mean curves depends completely on cluster assignment to deliver good results.
+
+%% Expected
+With clusters properly assigned we expect that mean curves have the same good estimates as in previous sections. Remember that the data used in the experiments have homogeneous covariance structure, but if we focus on cluster 1 it has the same parameters for every subject type. Then, for cluster 1 we look for parameter estimation close to real values and in cluster 2 the same summarizing effect as in Section~\ref{sec:comp2homog}.
+
+
+%% Non convergences
+To note, from the 30 experiment runs 3 did not converge to the maximum likelihood. Monitoring runs likelihood values at each iteraction it is possible to see that the algorithm could not increase the observed likelihood and stops in a local maximum. The parameters obtained are very discrepent and removed from the following results sections.
+
+
+\subsubsection{Mean curves and cluster assignment}
+\label{sec:simu-cl-fit-hu}
+
+% Describe good clustering 100%
+All experimental runs had great performance on clustering assignment with 100\% of groups correctly distributed. Figure~\ref{fig:cl-hu} shows the estimated mean curves precisely allocated to their cluster and around their real values. 
+
+
+\begin{figure}[t]
+  \centering
+  <<plot_cl_hu>>=
+  # uncacher: 1
+  c_hu$plot_mc + ylab("") +
+      scale_x_continuous("Time", labels = as.character(ID), breaks = ID) 
+  @ 
+  \caption{Estimated mean curves and cluster assignment for HU model}
+  \label{fig:cl-hu}
+\end{figure}
+
+% Expected based on cov pars
+Due to experiment configuration for covariance parameters in Table~\ref{tab:cl-par}, cluster 1 has a uniformly homogeneous dispersion and decay between subjects and both at least equal or grater than cluster 2. Thus the mean curves estimates in the first panel are naturally more dispersed around their median depth than the lower panel.
+
+% good separation even on cluster 1 with similar curves
+%The homogeneous uniform clustering model have proper estimation even for the similar curves in cluster 1. Their peak at the least quarter together with the bottom in the first quarter should have been a confounding feature to difficult their estimation. However, we see 
+
+%% The non converged ones
+We observed that the runs that did not converge fell on local maxima point in the log-likelihood function. Monitoring their observed log-likelihood it was possible to see the algorithm searching for values far distant of the proper fits. Their resulting mean curves assume negative values and have terrible fit on observed values which confirms the hypothesis of unique optimal aggregated model under right conditions for identifiability.
+
+\subsubsection{Covariance parameters}
+\label{sec:simu-cl-covar-hu}
+
+
+\begin{figure}[t]
+  \centering
+<<cp_cl_hu>>=
+# uncacher: 1
+c_hu$cov_par %>%
+    gather(Parameter,value, -c(cluster,run))%>%
+    mutate(x = "A") %>%
+    ggplot(aes(x,value)) +
+    geom_violin(draw_quantiles=c(.25,.5,.75)) +
+    facet_wrap(cluster~Parameter,
+               labeller = labeller(Parameter = label_parsed,
+                                   cluster = label_both),
+               scales = "free_y") +
+    ylab("Estimated values") +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank())
+@ 
+\caption{Covariance parameter estimatimates for the clustering experiment with homogeneous uniform model.}
+\label{fig:cl-par-hu}
+\end{figure}
+
+% Descr & expected
+In this experiment the simulated aggregated data contains an homogeneous uniform covariance structure in cluster 1 and an homogeneous structure in cluster 2. Thus the homogeneous uniform model must have good performance in cluster 1 and perform as in Section~\ref{sec:comp2hu} in cluster 2, where we had a complex covariance structure summarised in single decay and dispersion parameters.
+
+% Figure
+Figure~\ref{fig:cl-par-hu} displays violin plots with parameters estimates for each cluster. As expected, decay and dispersion parameters in cluster 1 have estimated values properly centered in the real value. Below, the estimated values for cluster 2 condense three different values on a single parameter, resulting in dispersion parameters right above their mean value of the three, 0.050, and decay parameters inside the parameters range from 1/8 to 1/2 but around 0.19.
+
+% table
+The exact mean, median and standard deviations for estimated values are available in Table~\ref{tab:cl-hu-tab}. Cluster 1 have precise estimation while cluster 2 have the summarizing effect mentioned above.
+
+%conclusion
+This homogeneous uniform clustering model fit in a homogeneous simulated data had perfect perfomance on cluster assignment and precise estimates in cluster 1. If the user is interested in also fit an homogeneous clustering model, its fast computation can be useful to obtain initial parameters and compare models.
+
+
+\begin{table}[b]\centering
+\caption{Summary of covariance parameters estimates for clustering experiment using an homogeneous uniform model.}
+<<tab_cl_hu>>=
+# uncacher: 1
+c_hu$cov_par %>%
+    gather(Parameter,value, -c(cluster,run)) %>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma")) %>%
+    rename("Cluster"="cluster")%>%
+    group_by(Cluster, Parameter) %>%
+    summarise(Median = median(value, na.rm=TRUE),
+              Mean = mean(value, na.rm=TRUE),
+              StdDev = sd(value,na.rm=TRUE)) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+ #         caption = "Nice table", label="cl-hu-tab",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1,
+                  valign = "middle")
+@ 
+\label{tab:cl-hu-tab}
+\end{table}
+
+
+\subsection{Homogeneous model}
+\label{sec:cl-homog}
+
+% The homog model
+The homogeneous model permits decay and dispersion parameters for each subject type. However, the computational effort is considerably greater than the homogeneous uniform model-based clustering. Using the same machine, the homogenous uniform clustering experiment spent approximately 6 hours to complete while the homogeneous model took about 60 hours. 
+
+% expected
+Considering that we are modelling the correct covariance structure we presume that parameters and mean curves estimates will be accurate in case of precisely clustering assignment. In particular, we expect evidences for uniformity between parameters of cluster 1 with estimates around the same value and coincident dispersion.
+
+% note on convergence
+Only one experimental run did not converge to maximum likelihood as in Section~\ref{sec:cl-hu}. This case had more interactions compared to the others and converged to a local maxima. The results of this run is incompatible to this analysis and will be removed.
+
+\subsubsection{Fit and cluster assignment}
+\label{sec:simu-cl-fit-homog}
+
+All experimental runs was correctly assigned to its cluster, as seen in Figure~\ref{fig:cl-homog}. The estimated mean curves in cluster 1 have slightly more dispersion because of their dispersion parameters equal of greater than the relative in cluster 2.
+
+\begin{figure}[t!]
+  \centering
+  <<plot_cl_homog>>=
+  # cache: a
+  c_homog$plot_mc +
+      ylab("") +
+      scale_x_continuous("Time", labels = as.character(ID), breaks = ID) 
+  @ 
+  \caption{Mean curves estimates and cluster assignment for homogeneous model.}
+  \label{fig:cl-homog}
+\end{figure}
+
+The lower panel shows accurate curves very close to their real values. Smaller decay parameters resulted in simulated curves smoother than in cluster 1 as well as their distinct shape which contributes to good performance on estimation.
+
+
+\subsubsection{Covariance parameters}
+\label{sec:simu-cl-covar}
+
+%intro
+As aforementioned, we expect that covariance parameters are properly estimated because of correct covariance structure model. In this section we are able to compare estimates with their real values.
+
+% fig
+The violin plots in Figure~\ref{fig:cl-homog-par} present parameters distributed around their real values. The dashed lines representing the real values are almost coincident with violins median lines. In cluster 1, the imaginary band formed by the first and third quartile lines are virtually concomitants for decay and dispersion parameters, indicating an evidence of uniformly homogeneity. This hypothesis is practically discarded in cluster 2 where estimates have clearly different locations and violins does not overlap.
+
+% table
+Table~\ref{tab:cl-homog-par} confirms the estimation precision with median and means very close to the real values. However, relative errors have considerably values for decay parameters and less magnitude for dispersion parameters. Compared to full model estimates in Section~\ref{sec:fm-covar}, these relative errors in Table~\ref{tab:cl-homog-par} are bigger on average. This suggests more uncertainty on covariance parameters estimates even with 30 replicates and 30 groups, besides the sucesses of their mean and median values.
+
+
+\begin{figure}[t]\centering
+<<cp_cl_homog>>=
+# cache: a
+omega_real = c_homog$cov_par_real$omega
+sigma_real = c_homog$cov_par_real$sigma
+c_homog$cov_par %>%
+    gather(Parameter,value, -c(cluster,run,type))%>%
+    mutate(cluster = 3-cluster) %>%
+    filter(value<1) %>%
+    mutate(x = "A",
+           real = ifelse(Parameter=="omega",
+                         omega_real[c(type+(cluster-1)*3)],
+                         sigma_real[c(type+(cluster-1)*3)])) %>%
+    ggplot(aes(x,value)) +
+    geom_violin(draw_quantiles=c(.25,.5,.75)) +
+    geom_hline(aes(yintercept = real), linetype=2) +
+    facet_grid(cluster~Parameter+type,
+               labeller = labeller(type = label_both,
+                                   Parameter = label_parsed,
+                                   cluster = label_both),
+               scales = "free_y") +
+    ylab("Estimated values") +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank())
+@ 
+\caption{Covariance parameters estimatimates for clustering experiments with homogeneous model.}
+\label{fig:cl-homog-par}
+\end{figure}
+
+
+
+
+% concl
+The experiment of model-based clustering with homogenous covariance structure had perfect cluster assignment, precise mean curves estimates and positive covariance estimates. The later presented relative errors greater than the aggregated models in Sections \ref{sec:simu-fm} and \ref{sec:fm-covar} but still excellent performance on average.
+
+
+\begin{table}[b]\centering
+\caption{Summary of covariance parameters estimates for clustering experiment using an homogeneous model.}
+<<tab_cl_homog>>=
+# cache: a
+c_homog$cov_par %>%
+    gather(Parameter,value, -c(cluster,run,type)) %>%
+    mutate(real = ifelse(Parameter=="omega",
+                         1/omega_real[c(type+(cluster-1)*3)],
+                         sigma_real[c(type+(cluster-1)*3)])) %>%
+    mutate(Parameter = fct_recode(factor(Parameter),
+                                  "$\\omega$" = "omega",
+                                  "$\\sigma$"="sigma"),
+           re = abs(1 - value/real)) %>%
+    rename("Cluster"="cluster")%>%
+    group_by(Cluster, Parameter, type) %>%
+    summarise(Median = median(value, na.rm=TRUE),
+              Mean = mean(value, na.rm=TRUE),
+              `RE Mean` = mean(re, na.rm=TRUE),
+              `RE IQR` = IQR(re,na.rm=TRUE)
+              ) %>%
+    kable(format = 'latex',booktabs=TRUE, digits=4, align="c",
+#          caption = "Nice table", label="cl-homog-par",
+          linesep="", escape=FALSE) %>%
+    collapse_rows(columns = 1:2, #latex_hline = "major",
+                  latex_hline ='custom', custom_latex_hline = 1:2,
+                  valign = "middle") 
+@ 
+\label{tab:cl-homog-par}
+\end{table}
+
+
+\subsection{Discussion}
+
+Both experiments had 100\% of cluster accuracy, even with covariance structure oversimplification in the homogeneous uniform model fit. This mispecification had similar results than in Section~\ref{sec:simu-fm}, where dispersion and decay parameters exhibit approximately the mean value of real homoegenous parameters.
+
+Besides the clear clustering separation on simulated data, mean curves of cluster 1 are very similar and could represent a challenging task to EM algorithm. However, the least squares estimator is robust enough to estimate the most demanding mean curves.
+
+As in the full model, to obtain better covariance estimates, a reasonable amount of replicates is required. In this experiment we focused on cluster assignment and did not diversified number of replicates, but as demonstrated in previous experiments, a small number of observations could lead to non convergence and discrepant estimates. 

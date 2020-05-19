@@ -1,0 +1,128 @@
+\newcommand{\Yijt}{Y_{ij}(t)}
+\newcommand{\Yij}[1]{Y_{ij}(#1)}
+\newcommand{\Wijmct}{W_{ijcm}(t)}
+\newcommand{\tc}{\alpha}
+\newcommand{\byij}{\mathbf{y}_{ij}}
+\newcommand{\bsy}{\mathbf{y}}
+\newcommand{\bsY}{\mathbf{Y}}
+
+%% Useful Stuff
+\newcommand{\every}[3]{#1 = #2, \dotsc, #3}
+\newcommand{\myeqref}[1]{Equation \eqref{#1}}
+\newcommand{\transp}{\intercal}
+
+%% Nomenclature
+\newcommand{\mjc}{M_{jc}}
+\newcommand{\mj}[1]{M_{j#1}}
+\newcommand{\basisfunc}{\phi}
+\newcommand{\vecbasisfunc}{\boldsymbol \phi}
+
+
+\newcommand{\prob}[1]{\mathbb{P}\Bigl( #1 \Bigr)}
+\newcommand{\vecYij}{\mathbf{Y}_{ij}}
+\newcommand{\vecCj}{\mathbf{C}_j}
+\newcommand{\vecKj}{\mathbf{K}_j}
+\newcommand{\vecMj}{\boldsymbol{\Omega}_j}
+\newcommand{\vecXj}{\mathbf{X}_j}
+\newcommand{\bB}{\mathbf{B}}
+\newcommand{\vecSimpleDesign}{\mathbf{X}}
+\newcommand{\vecCovarDesign}{\mathbf{D}}
+\newcommand{\ortVec}{\mathbf{e}}
+
+%% Model stuff
+\newcommand{\msurft}{\meancurve_c \big( u(t), v(t)  \big) }
+\newcommand{\msurf}[2]{\meancurve_c \big( #1, #2 \big) }
+\newcommand{\vecMsurf}{\boldsymbol \meancurve}
+
+%% Expansion terms
+\newcommand{\baseu}{\upsilon}
+\newcommand{\vecbaseu}{\boldsymbol \baseu}
+\newcommand{\basev}{\nu}
+\newcommand{\vecbasev}{\boldsymbol \basev}
+\newcommand{\covidx}{l^\prime}
+\newcommand{\capsCovidx}{L^\prime}
+
+%%%% Sums
+\newcommand{\sumC}{\sum_{c=1}^C}
+\newcommand{\sumMj}{\sum_{j=1}^{\mjc}}
+\newcommand{\mysum}[2]{\sum_{#1 =1}^{#2}}
+
+%%%% Erros
+\newcommand{\erro}{\varepsilon}
+\newcommand{\berro}{\boldsymbol \varepsilon}
+\newcommand{\erroij}{\erro_{ij}}
+\newcommand{\erroijmc}{\erro_{ijmc}}
+\newcommand{\erroijmct}{\erro_{ijmc}(t)}
+\newcommand{\erroijt}{\erro_{ij}(t)}
+\newcommand{\erroijdd}{\erro_{ij}(\cdot,\cdot)}
+\newcommand{\erroijmcdd}{\erro_{ijmc}(\cdot,\cdot)}
+\newcommand{\vecerroij}{\boldsymbol \varepsilon_{ij}}
+\newcommand{\vecerroijmc}{\boldsymbol \epsilon_{ijmc}}
+
+%%%% Vars dependent
+\newcommand{\vecWijmc}{\boldsymbol W_{ijmc}}
+\newcommand{\Wijm}[1]{W_{ijm}(#1)\bigg{|}_{C_{jm} = c}}
+\newcommand{\Wijmlat}[1]{W_{ijm}(#1)\bigg{|}_{
+\begin{subarray}{l}
+        C_{jm} = c \\ \clustervar_j = \idlat
+\end{subarray}}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\meancurve}{\mu}
+\newcommand{\bmc}{\boldsymbol \meancurve}
+\newcommand{\typevar}{C_{jm}}
+
+%% Parameters
+\newcommand{\covmatrix}{\Sigma}
+\newcommand{\bcovmatrix}{\boldsymbol \Sigma}
+\newcommand{\wcovmatrix}{\Psi}
+\newcommand{\bbeta}{\boldsymbol \beta}
+\newcommand{\vecPar}{\boldsymbol \Theta}
+\newcommand{\vecVarPar}{\boldsymbol \sigma}
+\newcommand{\bphi}{\boldsymbol \phi}
+\newcommand{\vecCovPar}{\boldsymbol \theta}
+
+\newcommand{\surfCoef}{\alpha}
+\newcommand{\bSurfCoef}{\boldsymbol \surfCoef}
+\newcommand{\covar}{D}
+\newcommand{\bcovar}{\mathbf{\covar}}
+\newcommand{\covarpar}{\gamma}
+\newcommand{\veccovarpar}{\boldsymbol \covarpar}
+\newcommand{\bcovarpar}{\veccovarpar}
+\newcommand{\varfunc}{\eta}
+\newcommand{\bvarfunc}{\boldsymbol \eta}
+\newcommand{\varpar}{\sigma}
+\newcommand{\bvarpar}{\boldsymbol \sigma}
+\newcommand{\corfunc}{\rho}
+\newcommand{\corpar}{\omega}
+\newcommand{\bcorpar}{\boldsymbol \corpar}
+\newcommand{\completefunc}{\nu}
+\newcommand{\varfuncpar}{\delta}
+\newcommand{\bvarfuncpar}{\boldsymbol \delta}
+\newcommand{\pars}{\Theta}
+\newcommand{\parsVec}{\boldsymbol \Theta}
+\newcommand{\bpi}{\boldsymbol \pi}
+\newcommand{\indic}[1]{\mathcal{I} \bigl( #1\bigr)}
+\newcommand{\X}{X}
+\newcommand{\bX}{\mathbf{X}}
+
+
+
+%% Latent cluster variable
+\newcommand{\latvar}{Z}
+\newcommand{\slatvar}{z}
+\newcommand{\idlat}{b}
+\newcommand{\bigidlat}{B}
+\newcommand{\latpar}{\pi}
+
+%% Highlighting
+\newcommand{\highlight}[1]{%
+  \colorbox{cyan!10}{$\displaystyle#1$}}
+
+%% EM
+\newcommand{\stp}{s}
+\newcommand{\stpp}{(s)}
+\newcommand{\parcluster}{\vecPar_\mathsf{cltr}}
+\newcommand{\mterm}{M \left( \parcluster \right)}
+\newcommand{\emprob}{p_{ij\idlat}}
+\newcommand{\sumijb}{\sum_{i,j,b}}
+\newcommand{\sigstar}{\Sigma_{ijb}^\star}
