@@ -276,3 +276,9 @@ TSWLatexianTemp*
 *.lpz
 .Rproj.user
 .Rhistory
+
+# folders
+cache/
+figure/
+output/
+thesis.tex
